@@ -1,0 +1,100 @@
+version: "3.9"
+
+services:
+  postgres:
+    build:
+      context: ./Nico/Postgres
+    env_file:
+      - .env
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - Nico
+
+  frontend:
+    build:
+      context: ./Nico/Front
+    env_file:
+      - .env
+    volumes:
+      - ./Nico/Front:/usr/src/app
+      - /usr/src/app/node_modules
+      - media_data:/usr/src/app/public/media   # ✅ accès aux médias via /public/media
+    networks:
+      - Nico
+
+  backend:
+    build:
+      context: ./Nico/Backend
+    volumes:
+      - ./Nico/Backend:/usr/src/app
+      - media_data:/usr/src/app/media          # ✅ Django stocke dans /media
+    depends_on:
+      - postgres
+    env_file:
+      - .env
+    networks:
+      - Nico
+
+  redis:
+    image: redis:alpine
+    expose:
+      - "6379"
+    networks:
+      - Nico
+
+  celery:
+    build:
+      context: ./Nico/Celery
+    command: celery -A Backend worker --loglevel=info
+    volumes:
+      - ./Nico/Backend:/usr/src/app
+      - media_data:/usr/src/app/media
+    env_file:
+      - .env
+    depends_on:
+      - backend
+      - postgres
+    networks:
+      - Nico
+
+  celery-beat:
+    build:
+      context: ./Nico/Celery-Beat
+    command: celery -A Backend beat --loglevel=info
+    volumes:
+      - ./Nico/Backend:/usr/src/app
+      - media_data:/usr/src/app/media
+    env_file:
+      - .env
+    depends_on:
+      - backend
+      - postgres
+    networks:
+      - Nico
+
+  nginx:
+    build:
+      context: ./Nico/Nginx
+    ports:
+      - "4043:443"
+    depends_on:
+      - backend
+      - frontend
+    env_file:
+      - .env
+    volumes:
+      - ./Nico/Nginx/ssl:/etc/nginx/ssl
+      - media_data:/usr/src/app/media          # ✅ Nginx sert aussi /media
+    networks:
+      - Nico
+
+networks:
+  Nico:
+    driver: bridge
+
+volumes:
+  pgdata:
+    driver: local
+  media_data:
+    driver: local

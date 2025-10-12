@@ -1,0 +1,9 @@
+Django>=5.0,<5.0.8
+psycopg2-binary>=2.8,<3.0
+djangorestframework>=3.12,<4.0
+django-cors-headers>=3.7.1,<4.0
+djangorestframework-simplejwt<7.0
+redis>=4.0.0
+celery>=5.0.0
+django-celery-beat>=2.5.0
+gunicorn>=20.1.0
