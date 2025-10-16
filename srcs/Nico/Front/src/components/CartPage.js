@@ -4,6 +4,9 @@ function CartPage({ images, onBackToGallery }) {
   const [cart, setCart] = useState([]);
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showEmailPrompt, setShowEmailPrompt] = useState(false);
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (images && images.length > 0) {
@@ -13,17 +16,11 @@ function CartPage({ images, onBackToGallery }) {
   }, [images]);
 
   const handleAddToCart = (image) => {
-    if (!cart.includes(image)) {
-      setCart([...cart, image]);
-    }
+    if (!cart.includes(image)) setCart([...cart, image]);
   };
 
   const handleRemoveFromCart = (image) => {
     setCart(cart.filter((img) => img !== image));
-  };
-
-  const handleConfirm = () => {
-    alert(`Panier confirmé avec ${cart.length} image(s)`);
   };
 
   const goNext = () => {
@@ -43,11 +40,47 @@ function CartPage({ images, onBackToGallery }) {
     setSelectedImage(images[index]);
   };
 
+  const handleConfirm = () => {
+    if (cart.length === 0) return alert("Aucune image dans le panier !");
+    setShowEmailPrompt(true);
+  };
+
+  const handleSendToBackend = async () => {
+    if (!email.trim()) return alert("Merci d’entrer un e-mail valide.");
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/albums/confirm-cart/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          files: cart,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert(`✅ ${data.copied.length} image(s) enregistrée(s) pour ${email}`);
+        setCart([]);
+        setShowEmailPrompt(false);
+        setEmail("");
+      } else {
+        alert("Erreur : " + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Erreur de connexion au serveur.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="d-flex" style={{ height: "90vh" }}>
       {/* Section principale */}
       <div className="flex-grow-1 d-flex flex-column align-items-center justify-content-center border-end p-3">
-        {/* Galerie miniatures */}
         <div className="d-flex flex-wrap mb-3 justify-content-center">
           {images.map((img, idx) => (
             <img
@@ -67,7 +100,6 @@ function CartPage({ images, onBackToGallery }) {
           ))}
         </div>
 
-        {/* Image en grand */}
         {selectedImage ? (
           <div className="d-flex flex-column align-items-center">
             <img
@@ -79,7 +111,10 @@ function CartPage({ images, onBackToGallery }) {
               <button className="btn btn-secondary" onClick={goPrev}>
                 ◀ Précédent
               </button>
-              <button className="btn btn-primary" onClick={() => handleAddToCart(selectedImage)}>
+              <button
+                className="btn btn-primary"
+                onClick={() => handleAddToCart(selectedImage)}
+              >
                 Ajouter au panier
               </button>
               <button className="btn btn-secondary" onClick={goNext}>
@@ -95,14 +130,14 @@ function CartPage({ images, onBackToGallery }) {
         )}
       </div>
 
-      {/* Sidebar panier transparente avec barre de séparation */}
+      {/* Sidebar panier */}
       <div
         style={{
           width: "300px",
           padding: "1rem",
-          backgroundColor: "rgba(255, 255, 255, 0.3)", // transparent
-          borderLeft: "2px solid #000", // barre de séparation
-          backdropFilter: "blur(5px)", // flou derrière pour meilleure lisibilité
+          backgroundColor: "rgba(255, 255, 255, 0.3)",
+          borderLeft: "2px solid #000",
+          backdropFilter: "blur(5px)",
           display: "flex",
           flexDirection: "column",
         }}
@@ -139,6 +174,59 @@ function CartPage({ images, onBackToGallery }) {
           ✅ Confirmer le panier
         </button>
       </div>
+
+      {/* 📨 Popup email */}
+      {showEmailPrompt && (
+        <div
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: "rgba(0,0,0,0.5)",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              padding: "20px",
+              borderRadius: "10px",
+              width: "300px",
+              textAlign: "center",
+            }}
+          >
+            <h5>Entrer votre email</h5>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="exemple@mail.com"
+              className="form-control my-3"
+              disabled={loading}
+            />
+            <div className="d-flex justify-content-between">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowEmailPrompt(false)}
+                disabled={loading}
+              >
+                Annuler
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={handleSendToBackend}
+                disabled={loading}
+              >
+                {loading ? "Envoi..." : "Valider"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

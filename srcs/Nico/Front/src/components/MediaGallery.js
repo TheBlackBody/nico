@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import CartPage from "./CartPage"; // Assurez-vous que CartPage est importé
+import CartPage from "./CartPage"; // Assurez-vous que CartPage est bien importé
 
 function MediaGallery({ basePath, onFolderCreated }) {
   const [albums, setAlbums] = useState([]);
@@ -9,6 +9,7 @@ function MediaGallery({ basePath, onFolderCreated }) {
   const [clientName, setClientName] = useState("");
   const [loading, setLoading] = useState(false);
   const [cartImages, setCartImages] = useState(null); // Pour CartPage
+  const [cartClientName, setCartClientName] = useState(""); // ✅ Nom du dossier client
 
   const getTodayFolder = () => {
     const today = new Date();
@@ -61,17 +62,24 @@ function MediaGallery({ basePath, onFolderCreated }) {
     const newPath = `${currentPath}/${folderName}`;
     const pathParts = newPath.split("/");
 
-    // Si on est dans un dossier client (niveau >= 3 : date / photographe / client)
+    // Si on est dans un dossier client (ex: "date/29_09_2025/sf/Jean")
     if (pathParts.length >= 4) {
+      const clientName = pathParts[pathParts.length - 1]; // 👈 récupère le nom du dossier client
+
       const clientFiles = albums.filter((file) =>
         file.folder.startsWith(newPath + "/")
       );
-      const directFiles = albums.filter(file => file.folder === newPath);
-      const allImages = [...clientFiles, ...directFiles].map(f =>
-        `${process.env.PUBLIC_URL}/media${f.path.replace("/media", "")}`
+      const directFiles = albums.filter((file) => file.folder === newPath);
+
+      // Prépare la liste complète des images du dossier
+      const allImages = [...clientFiles, ...directFiles].map(
+        (f) => `${process.env.PUBLIC_URL}/media${f.path.replace("/media", "")}`
       );
 
-      setCartImages(allImages); // On envoie à CartPage
+      // 🔹 Stocke les images et le nom du client pour CartPage
+      setCartImages(allImages);
+      setCartClientName(clientName);
+
       return; // ne pas changer currentPath
     }
 
@@ -111,8 +119,7 @@ function MediaGallery({ basePath, onFolderCreated }) {
   };
 
   const handleConfirm = () => {
-    if (!clientName.trim())
-      return alert("Merci d’entrer un nom de client");
+    if (!clientName.trim()) return alert("Merci d’entrer un nom de client");
     setLoading(true);
 
     fetch("/api/albums/create-client/", {
@@ -135,11 +142,12 @@ function MediaGallery({ basePath, onFolderCreated }) {
       .finally(() => setLoading(false));
   };
 
-  // Si cartImages n'est pas null, afficher CartPage
+  // ✅ Si cartImages est défini, on affiche CartPage
   if (cartImages) {
     return (
       <CartPage
         images={cartImages}
+        clientName={cartClientName} // ✅ On transmet le nom du dossier client
         onBackToGallery={() => setCartImages(null)}
       />
     );

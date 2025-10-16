@@ -77,3 +77,37 @@ def create_client_folder(request):
         "message": f"Sous-dossier '{client}' créé avec {len(moved_files)} fichier(s)",
         "files": moved_files
     }, status=status.HTTP_201_CREATED)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def confirm_cart(request):
+    """
+    Reçoit : { "email": "test@example.com", "files": ["/media/date/..."] }
+    Crée un dossier dans MEDIA_ROOT/validated/<email>/ avec toutes les images copiées.
+    """
+    data = request.data
+    email = data.get("email")
+    files = data.get("files", [])
+
+    if not email or not files:
+        return JsonResponse({"error": "Email ou fichiers manquants"}, status=400)
+
+    # Dossier de destination
+    email_folder = os.path.join(settings.MEDIA_ROOT, "validated", email)
+    os.makedirs(email_folder, exist_ok=True)
+
+    copied_files = []
+
+    for file_path in files:
+        relative_path = file_path.replace(settings.MEDIA_URL, "").lstrip("/")
+        src_path = os.path.join(settings.MEDIA_ROOT, relative_path)
+        if os.path.exists(src_path):
+            dest_path = os.path.join(email_folder, os.path.basename(src_path))
+            shutil.copy2(src_path, dest_path)
+            copied_files.append(dest_path.replace(settings.MEDIA_ROOT, settings.MEDIA_URL))
+
+    return JsonResponse({
+        "success": True,
+        "email": email,
+        "copied": copied_files
+    })

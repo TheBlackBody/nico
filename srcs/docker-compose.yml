@@ -19,7 +19,7 @@ services:
     volumes:
       - ./Nico/Front:/usr/src/app
       - /usr/src/app/node_modules
-      - media_data:/usr/src/app/public/media   # ✅ accès aux médias via /public/media
+      - ./Nico/Backend/media:/usr/src/app/public/media   # ✅ accès aux médias via /public/media
     networks:
       - Nico
 
@@ -28,7 +28,7 @@ services:
       context: ./Nico/Backend
     volumes:
       - ./Nico/Backend:/usr/src/app
-      - media_data:/usr/src/app/media          # ✅ Django stocke dans /media
+      - ./Nico/Backend/media:/usr/src/app/media          # ✅ Django stocke dans /media
     depends_on:
       - postgres
     env_file:
@@ -49,7 +49,7 @@ services:
     command: celery -A Backend worker --loglevel=info
     volumes:
       - ./Nico/Backend:/usr/src/app
-      - media_data:/usr/src/app/media
+      - ./Nico/Backend/media:/usr/src/app/media
     env_file:
       - .env
     depends_on:
@@ -64,7 +64,7 @@ services:
     command: celery -A Backend beat --loglevel=info
     volumes:
       - ./Nico/Backend:/usr/src/app
-      - media_data:/usr/src/app/media
+      - ./Nico/Backend/media:/usr/src/app/media
     env_file:
       - .env
     depends_on:
@@ -85,7 +85,7 @@ services:
       - .env
     volumes:
       - ./Nico/Nginx/ssl:/etc/nginx/ssl
-      - media_data:/usr/src/app/media          # ✅ Nginx sert aussi /media
+      - ./Nico/Backend/media:/usr/src/app/media          # ✅ Nginx sert aussi /media
     networks:
       - Nico
 
