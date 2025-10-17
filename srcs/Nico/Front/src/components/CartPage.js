@@ -66,6 +66,8 @@ function CartPage({ images, onBackToGallery }) {
         setCart([]);
         setShowEmailPrompt(false);
         setEmail("");
+
+        window.location.reload();
       } else {
         alert("Erreur : " + data.error);
       }
