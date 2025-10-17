@@ -8,7 +8,7 @@ function Client() {
   const [currentPage, setCurrentPage] = useState("gallery"); // gallery | cart
   const [cartImages, setCartImages] = useState([]); // images à envoyer au CartPage
 
-  const correctPassword = "accro2025";
+  const correctPassword = "1234";
 
   const handlePasswordSubmit = (inputPassword) => {
     if (inputPassword === correctPassword) {

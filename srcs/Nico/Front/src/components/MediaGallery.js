@@ -121,19 +121,38 @@ function MediaGallery({ basePath, onFolderCreated }) {
   const handleConfirm = () => {
     if (!clientName.trim()) return alert("Merci d’entrer un nom de client");
     setLoading(true);
-
+  
     fetch("/api/albums/create-client/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ client: clientName, files: selectedRange }),
     })
       .then((res) => res.json())
-      .then(() => {
-        if (onFolderCreated) onFolderCreated(selectedRange);
+      .then((data) => {
+        if (data.files && data.files.length > 0) {
+          // ✅ Convertit les chemins système renvoyés par Django en URLs accessibles
+          const normalizedImages = data.files.map((f) => {
+            // Ex: "/usr/src/app/media/date/17_10_2025/sf/aa/photo.png"
+            // → "/media/date/17_10_2025/sf/aa/photo.png"
+            const cleanPath = f.split("/media/")[1];
+            return `${process.env.PUBLIC_URL}/media/${cleanPath}`;
+          });
+        
+          // ✅ Récupère le nom du dossier client à partir du chemin
+          const clientFolderName =
+            data.files[0].split("/media/")[1].split("/")[3] || clientName;
+        
+          // ✅ Ouvre directement la page du panier avec les bonnes URLs
+          setCartClientName(clientFolderName);
+          setCartImages(normalizedImages);
+        } else {
+          alert("Erreur : aucune image renvoyée par le serveur.");
+        }
+      
         setShowPopup(false);
         setClientName("");
         setSelectedRange([]);
-        fetchAlbums();
+        fetchAlbums(); // rafraîchit la liste
       })
       .catch((err) => {
         console.error(err);
@@ -141,6 +160,7 @@ function MediaGallery({ basePath, onFolderCreated }) {
       })
       .finally(() => setLoading(false));
   };
+
 
   // ✅ Si cartImages est défini, on affiche CartPage
   if (cartImages) {
