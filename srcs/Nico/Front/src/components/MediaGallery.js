@@ -42,6 +42,7 @@ function MediaGallery({ basePath, onFolderCreated }) {
   const getItemsAtPath = (path) => {
     const items = [];
     const prefix = path ? `${path}/` : "";
+    
     albums.forEach((file) => {
       if (file.folder === path) {
         items.push({ ...file, isFolder: false });
@@ -53,7 +54,16 @@ function MediaGallery({ basePath, onFolderCreated }) {
         }
       }
     });
-    return items;
+  
+    // ✅ Tri alphabétique des dossiers et fichiers séparément
+    const folders = items.filter(i => i.isFolder).sort((a, b) =>
+      a.folder.localeCompare(b.folder, 'fr', { numeric: true, sensitivity: 'base' })
+    );
+    const files = items.filter(i => !i.isFolder).sort((a, b) =>
+      a.path.localeCompare(b.path, 'fr', { numeric: true, sensitivity: 'base' })
+    );
+  
+    return [...folders, ...files];
   };
 
   const items = getItemsAtPath(currentPath);
