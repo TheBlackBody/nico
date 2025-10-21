@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-function CartPage({ images, onBackToGallery }) {
-  const [cart, setCart] = useState([]);
+function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
@@ -16,11 +15,11 @@ function CartPage({ images, onBackToGallery }) {
   }, [images]);
 
   const handleAddToCart = (image) => {
-    if (!cart.includes(image)) setCart([...cart, image]);
+    if (!globalCart.includes(image)) setGlobalCart([...globalCart, image]);
   };
 
   const handleRemoveFromCart = (image) => {
-    setCart(cart.filter((img) => img !== image));
+    setGlobalCart(globalCart.filter((img) => img !== image));
   };
 
   const goNext = () => {
@@ -35,13 +34,8 @@ function CartPage({ images, onBackToGallery }) {
     setSelectedImage(images[prevIndex]);
   };
 
-  const handleSelectImage = (index) => {
-    setCurrentIndex(index);
-    setSelectedImage(images[index]);
-  };
-
   const handleConfirm = () => {
-    if (cart.length === 0) return alert("Aucune image dans le panier !");
+    if (globalCart.length === 0) return alert("Aucune image dans le panier !");
     setShowEmailPrompt(true);
   };
 
@@ -55,7 +49,7 @@ function CartPage({ images, onBackToGallery }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
-          files: cart,
+          files: globalCart,
         }),
       });
 
@@ -63,11 +57,10 @@ function CartPage({ images, onBackToGallery }) {
 
       if (response.ok) {
         alert(`✅ ${data.copied.length} image(s) enregistrée(s) pour ${email}`);
-        setCart([]);
+        setGlobalCart([]);
         setShowEmailPrompt(false);
         setEmail("");
-
-        window.location.reload();
+        window.location.reload(); // ✅ rafraîchit la page
       } else {
         alert("Erreur : " + data.error);
       }
@@ -80,53 +73,69 @@ function CartPage({ images, onBackToGallery }) {
   };
 
   return (
-    <div className="d-flex" style={{ height: "90vh" }}>
+    <div className="d-flex" style={{ height: "100vh" }}>
       {/* Section principale */}
-      <div className="flex-grow-1 d-flex flex-column align-items-center justify-content-center border-end p-3">
-        <div className="d-flex flex-wrap mb-3 justify-content-center">
-          {images.map((img, idx) => (
-            <img
-              key={idx}
-              src={img}
-              alt={`img-${idx}`}
-              style={{
-                width: "100px",
-                height: "100px",
-                objectFit: "cover",
-                margin: "5px",
-                cursor: "pointer",
-                border: selectedImage === img ? "3px solid blue" : "1px solid gray",
-              }}
-              onClick={() => handleSelectImage(idx)}
-            />
-          ))}
-        </div>
-
+      <div className="flex-grow-1 position-relative d-flex flex-column align-items-center justify-content-center border-end p-3">
         {selectedImage ? (
-          <div className="d-flex flex-column align-items-center">
+          <>
+            {/* Bouton précédent à gauche */}
+            <button
+              className="btn btn-dark position-absolute"
+              style={{
+                left: "20px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 10,
+                fontSize: "1.5rem",
+                padding: "0.5rem 1rem",
+              }}
+              onClick={goPrev}
+            >
+              ◀
+            </button>
+
+            {/* Image principale au centre */}
             <img
               src={selectedImage}
               alt="Aperçu"
-              style={{ maxWidth: "80%", maxHeight: "60vh", objectFit: "contain" }}
+              style={{
+                maxWidth: "90%",
+                maxHeight: "85vh",
+                objectFit: "contain",
+                borderRadius: "10px",
+                boxShadow: "0 0 15px rgba(0,0,0,0.4)",
+              }}
             />
-            <div className="mt-3 d-flex justify-content-center gap-2">
-              <button className="btn btn-secondary" onClick={goPrev}>
-                ◀ Précédent
-              </button>
+
+            {/* Bouton suivant à droite */}
+            <button
+              className="btn btn-dark position-absolute"
+              style={{
+                right: "20px",
+                top: "50%",
+                transform: "translateY(-50%)",
+                zIndex: 10,
+                fontSize: "1.5rem",
+                padding: "0.5rem 1rem",
+              }}
+              onClick={goNext}
+            >
+              ▶
+            </button>
+
+            {/* Boutons d’action sous l’image */}
+            <div className="mt-4 d-flex justify-content-center gap-3">
               <button
                 className="btn btn-primary"
                 onClick={() => handleAddToCart(selectedImage)}
               >
-                Ajouter au panier
-              </button>
-              <button className="btn btn-secondary" onClick={goNext}>
-                Suivant ▶
+                Ajouter au panier 🛒
               </button>
               <button className="btn btn-warning" onClick={onBackToGallery}>
                 🔙 Retour à la galerie
               </button>
             </div>
-          </div>
+          </>
         ) : (
           <p>Sélectionnez une image pour l’agrandir</p>
         )}
@@ -144,16 +153,21 @@ function CartPage({ images, onBackToGallery }) {
           flexDirection: "column",
         }}
       >
-        <h5>🛒 Panier ({cart.length})</h5>
+        <h5>🛒 Panier ({globalCart.length})</h5>
         <div className="flex-grow-1 overflow-auto mt-2 p-2">
-          {cart.length > 0 ? (
-            cart.map((img, idx) => (
+          {globalCart.length > 0 ? (
+            globalCart.map((img, idx) => (
               <div key={idx} className="d-flex align-items-center mb-2">
                 <img
                   src={img}
                   alt={`panier-${idx}`}
-                  style={{ width: "60px", height: "60px", objectFit: "cover" }}
-                  onClick={() => handleSelectImage(images.indexOf(img))}
+                  style={{
+                    width: "60px",
+                    height: "60px",
+                    objectFit: "cover",
+                    cursor: "pointer",
+                  }}
+                  onClick={() => setSelectedImage(img)}
                   className="me-2 border"
                 />
                 <button
@@ -171,13 +185,13 @@ function CartPage({ images, onBackToGallery }) {
         <button
           className="btn btn-success mt-3"
           onClick={handleConfirm}
-          disabled={cart.length === 0}
+          disabled={globalCart.length === 0}
         >
           ✅ Confirmer le panier
         </button>
       </div>
 
-      {/* 📨 Popup email */}
+      {/* Popup email */}
       {showEmailPrompt && (
         <div
           style={{
@@ -190,6 +204,7 @@ function CartPage({ images, onBackToGallery }) {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
+            zIndex: 100,
           }}
         >
           <div
@@ -199,6 +214,7 @@ function CartPage({ images, onBackToGallery }) {
               borderRadius: "10px",
               width: "300px",
               textAlign: "center",
+              boxShadow: "0 0 15px rgba(0,0,0,0.3)",
             }}
           >
             <h5>Entrer votre email</h5>

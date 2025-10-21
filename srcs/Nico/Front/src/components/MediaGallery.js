@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import CartPage from "./CartPage"; // Assurez-vous que CartPage est bien importé
+import CartPage from "./CartPage";
 
 function MediaGallery({ basePath, onFolderCreated }) {
   const [albums, setAlbums] = useState([]);
@@ -8,8 +8,9 @@ function MediaGallery({ basePath, onFolderCreated }) {
   const [showPopup, setShowPopup] = useState(false);
   const [clientName, setClientName] = useState("");
   const [loading, setLoading] = useState(false);
-  const [cartImages, setCartImages] = useState(null); // Pour CartPage
-  const [cartClientName, setCartClientName] = useState(""); // ✅ Nom du dossier client
+  const [cartImages, setCartImages] = useState(null);
+  const [cartClientName, setCartClientName] = useState("");
+  const [cart, setCart] = useState([]); // ✅ panier global partagé
 
   const getTodayFolder = () => {
     const today = new Date();
@@ -42,7 +43,7 @@ function MediaGallery({ basePath, onFolderCreated }) {
   const getItemsAtPath = (path) => {
     const items = [];
     const prefix = path ? `${path}/` : "";
-    
+
     albums.forEach((file) => {
       if (file.folder === path) {
         items.push({ ...file, isFolder: false });
@@ -54,15 +55,25 @@ function MediaGallery({ basePath, onFolderCreated }) {
         }
       }
     });
-  
-    // ✅ Tri alphabétique des dossiers et fichiers séparément
-    const folders = items.filter(i => i.isFolder).sort((a, b) =>
-      a.folder.localeCompare(b.folder, 'fr', { numeric: true, sensitivity: 'base' })
-    );
-    const files = items.filter(i => !i.isFolder).sort((a, b) =>
-      a.path.localeCompare(b.path, 'fr', { numeric: true, sensitivity: 'base' })
-    );
-  
+
+    // ✅ Tri alphabétique
+    const folders = items
+      .filter((i) => i.isFolder)
+      .sort((a, b) =>
+        a.folder.localeCompare(b.folder, "fr", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+    const files = items
+      .filter((i) => !i.isFolder)
+      .sort((a, b) =>
+        a.path.localeCompare(b.path, "fr", {
+          numeric: true,
+          sensitivity: "base",
+        })
+      );
+
     return [...folders, ...files];
   };
 
@@ -72,28 +83,23 @@ function MediaGallery({ basePath, onFolderCreated }) {
     const newPath = `${currentPath}/${folderName}`;
     const pathParts = newPath.split("/");
 
-    // Si on est dans un dossier client (ex: "date/29_09_2025/sf/Jean")
+    // Si on est dans un dossier client
     if (pathParts.length >= 4) {
-      const clientName = pathParts[pathParts.length - 1]; // 👈 récupère le nom du dossier client
-
+      const clientName = pathParts[pathParts.length - 1];
       const clientFiles = albums.filter((file) =>
         file.folder.startsWith(newPath + "/")
       );
       const directFiles = albums.filter((file) => file.folder === newPath);
 
-      // Prépare la liste complète des images du dossier
       const allImages = [...clientFiles, ...directFiles].map(
         (f) => `${process.env.PUBLIC_URL}/media${f.path.replace("/media", "")}`
       );
 
-      // 🔹 Stocke les images et le nom du client pour CartPage
       setCartImages(allImages);
       setCartClientName(clientName);
-
-      return; // ne pas changer currentPath
+      return;
     }
 
-    // Navigation normale
     setCurrentPath(newPath);
     setSelectedRange([]);
   };
@@ -131,7 +137,7 @@ function MediaGallery({ basePath, onFolderCreated }) {
   const handleConfirm = () => {
     if (!clientName.trim()) return alert("Merci d’entrer un nom de client");
     setLoading(true);
-  
+
     fetch("/api/albums/create-client/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -140,29 +146,24 @@ function MediaGallery({ basePath, onFolderCreated }) {
       .then((res) => res.json())
       .then((data) => {
         if (data.files && data.files.length > 0) {
-          // ✅ Convertit les chemins système renvoyés par Django en URLs accessibles
           const normalizedImages = data.files.map((f) => {
-            // Ex: "/usr/src/app/media/date/17_10_2025/sf/aa/photo.png"
-            // → "/media/date/17_10_2025/sf/aa/photo.png"
             const cleanPath = f.split("/media/")[1];
             return `${process.env.PUBLIC_URL}/media/${cleanPath}`;
           });
-        
-          // ✅ Récupère le nom du dossier client à partir du chemin
+
           const clientFolderName =
             data.files[0].split("/media/")[1].split("/")[3] || clientName;
-        
-          // ✅ Ouvre directement la page du panier avec les bonnes URLs
+
           setCartClientName(clientFolderName);
           setCartImages(normalizedImages);
         } else {
           alert("Erreur : aucune image renvoyée par le serveur.");
         }
-      
+
         setShowPopup(false);
         setClientName("");
         setSelectedRange([]);
-        fetchAlbums(); // rafraîchit la liste
+        fetchAlbums();
       })
       .catch((err) => {
         console.error(err);
@@ -171,14 +172,15 @@ function MediaGallery({ basePath, onFolderCreated }) {
       .finally(() => setLoading(false));
   };
 
-
-  // ✅ Si cartImages est défini, on affiche CartPage
+  // ✅ Passage du panier global à CartPage
   if (cartImages) {
     return (
       <CartPage
         images={cartImages}
-        clientName={cartClientName} // ✅ On transmet le nom du dossier client
+        clientName={cartClientName}
         onBackToGallery={() => setCartImages(null)}
+        globalCart={cart}
+        setGlobalCart={setCart}
       />
     );
   }
@@ -194,49 +196,60 @@ function MediaGallery({ basePath, onFolderCreated }) {
       )}
 
       <div className="d-flex flex-wrap">
-        {items.map((item, i) => (
-          <div
-            key={i}
-            className="m-2"
-            style={{
-              border: selectedRange.includes(item.path)
-                ? "3px solid red"
-                : "1px solid #ccc",
-              padding: "2px",
-              cursor: item.isFolder ? "pointer" : "default",
-            }}
-            onClick={() =>
-              item.isFolder
-                ? handleFolderClick(item.folder)
-                : handleImageClick(item.path)
-            }
-          >
-            {item.isFolder ? (
-              <div
-                style={{
-                  width: "200px",
-                  height: "150px",
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  background: "#eee",
-                  fontWeight: "bold",
-                }}
-              >
-                {item.folder}
-              </div>
-            ) : (
-              <img
-                src={`${process.env.PUBLIC_URL}/media${item.path.replace(
-                  "/media",
-                  ""
-                )}`}
-                alt={`img-${i}`}
-                style={{ width: "200px", height: "150px", objectFit: "cover" }}
-              />
-            )}
-          </div>
-        ))}
+        {items.map((item, i) => {
+          const imageUrl = `${process.env.PUBLIC_URL}/media${item.path?.replace(
+            "/media",
+            ""
+          )}`;
+          const isInCart = cart.includes(imageUrl);
+
+          return (
+            <div
+              key={i}
+              className="m-2"
+              style={{
+                border: isInCart
+                  ? "3px solid green"
+                  : selectedRange.includes(item.path)
+                  ? "3px solid red"
+                  : "1px solid #ccc",
+                padding: "2px",
+                cursor: item.isFolder ? "pointer" : "default",
+              }}
+              onClick={() =>
+                item.isFolder
+                  ? handleFolderClick(item.folder)
+                  : handleImageClick(item.path)
+              }
+            >
+              {item.isFolder ? (
+                <div
+                  style={{
+                    width: "200px",
+                    height: "150px",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    background: "#eee",
+                    fontWeight: "bold",
+                  }}
+                >
+                  {item.folder}
+                </div>
+              ) : (
+                <img
+                  src={imageUrl}
+                  alt={`img-${i}`}
+                  style={{
+                    width: "200px",
+                    height: "150px",
+                    objectFit: "cover",
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {showPopup && (
