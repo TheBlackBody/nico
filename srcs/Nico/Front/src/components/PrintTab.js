@@ -8,13 +8,15 @@ function PrintTab({
   setPrintFormat,
   handlePrint,
   getCacheBustedPath,
-  normalizePath
+  normalizePath,
+  selectedDate
 }) {
   return (
     <div className="mt-3">
       <Button variant="secondary" className="mb-3" onClick={() => setActiveTab('edit')}>
         Retour à l'édition
       </Button>
+      <p className="mb-3"><small>Date sélectionnée: {selectedDate}</small></p>
       {selectedImages.length === 0 ? (
         <div>Aucune image sélectionnée pour impression. Sélectionnez des images dans l'onglet d'édition.</div>
       ) : (

@@ -8,6 +8,11 @@ function Client() {
   const [currentPage, setCurrentPage] = useState("gallery"); // gallery | cart
   const [cartImages, setCartImages] = useState([]); // images à envoyer au CartPage
 
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState(
+    `${String(today.getDate()).padStart(2, '0')}_${String(today.getMonth() + 1).padStart(2, '0')}_${today.getFullYear()}`
+  );
+
   const correctPassword = "1234";
 
   const handlePasswordSubmit = (inputPassword) => {
@@ -24,12 +29,30 @@ function Client() {
     setCurrentPage("cart");
   };
 
+  const formatDateToString = (date) => {
+    return `${String(date.getDate()).padStart(2, '0')}_${String(date.getMonth() + 1).padStart(2, '0')}_${date.getFullYear()}`;
+  };
+
+  const handleDateChange = (e) => {
+    const dateString = e.target.value; // format: YYYY-MM-DD
+    if (dateString) {
+      const date = new Date(dateString);
+      setSelectedDate(formatDateToString(date));
+    }
+  };
+
   return (
     <div className="container-fluid mt-3">
       {!isAuthenticated ? (
         <PasswordPrompt onSubmit={handlePasswordSubmit} />
       ) : currentPage === "gallery" ? (
-        <MediaGallery basePath="/media/day_date/" onFolderCreated={handleFolderCreated} />
+        <>
+          <MediaGallery
+            selectedDate={selectedDate}
+            onDateChange={handleDateChange}
+            onFolderCreated={handleFolderCreated}
+          />
+        </>
       ) : (
         <CartPage images={cartImages} onBackToGallery={() => setCurrentPage("gallery")} />
       )}

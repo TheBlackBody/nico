@@ -29,7 +29,8 @@ function EditTab({
   imagePreviewKey,
   getCacheBustedPath,
   isSamePath,
-  normalizePath
+  normalizePath,
+  selectedDate
 }) {
   const [previewSrc, setPreviewSrc] = useState(null);
   const canvasRef = useRef(document.createElement('canvas'));

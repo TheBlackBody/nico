@@ -1,24 +1,28 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import CartPage from "./CartPage";
 
-function MediaGallery({ basePath, onFolderCreated }) {
+function MediaGallery({ basePath, selectedDate, onDateChange, onFolderCreated }) {
   const [albums, setAlbums] = useState([]);
   const [currentPath, setCurrentPath] = useState("");
   const [selectedRange, setSelectedRange] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
+  const [showDateInput, setShowDateInput] = useState(false);
   const [clientName, setClientName] = useState("");
   const [loading, setLoading] = useState(false);
   const [cartImages, setCartImages] = useState(null);
   const [cartClientName, setCartClientName] = useState("");
   const [cart, setCart] = useState([]); // ✅ panier global partagé
 
-  const getTodayFolder = () => {
+  const getTodayFolder = useCallback(() => {
+    if (selectedDate) {
+      return `date/${selectedDate}`;
+    }
     const today = new Date();
     const dd = String(today.getDate()).padStart(2, "0");
     const mm = String(today.getMonth() + 1).padStart(2, "0");
     const yyyy = today.getFullYear();
     return `date/${dd}_${mm}_${yyyy}`;
-  };
+  }, [selectedDate]);
 
   const fetchAlbums = useCallback(() => {
     fetch("/api/albums/liste/")
@@ -32,7 +36,12 @@ function MediaGallery({ basePath, onFolderCreated }) {
         if (!currentPath) setCurrentPath(todayFolder);
       })
       .catch((err) => console.error(err));
-  }, [currentPath]);
+  }, [getTodayFolder, currentPath]);
+
+  useEffect(() => {
+    const todayFolder = getTodayFolder();
+    setCurrentPath(todayFolder);
+  }, [getTodayFolder]);
 
   useEffect(() => {
     fetchAlbums();
@@ -78,6 +87,7 @@ function MediaGallery({ basePath, onFolderCreated }) {
   };
 
   const items = getItemsAtPath(currentPath);
+  const dateInputRef = useRef(null);
 
   const handleFolderClick = (folderName) => {
     const newPath = `${currentPath}/${folderName}`;
@@ -187,7 +197,56 @@ function MediaGallery({ basePath, onFolderCreated }) {
 
   return (
     <div>
-      <h2>Explorateur du {getTodayFolder().split("/")[1]}</h2>
+      <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+        <h2 style={{ margin: 0 }}>Explorateur du {getTodayFolder().split("/")[1]}</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <button
+            type="button"
+            onClick={() => {
+              setShowDateInput(true);
+              setTimeout(() => {
+                if (dateInputRef.current) {
+                  if (dateInputRef.current.showPicker) {
+                    dateInputRef.current.showPicker();
+                  }
+                  dateInputRef.current.focus();
+                }
+              }, 0);
+            }}
+            style={{
+              background: "transparent",
+              border: "none",
+              padding: 0,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+            }}
+            aria-label="Ouvrir le sélecteur de date"
+          >
+            <img
+              src={`${process.env.PUBLIC_URL}/cal.png`}
+              alt="Sélectionner une date"
+              style={{ width: "32px", height: "32px" }}
+            />
+          </button>
+          {showDateInput && (
+            <input
+              ref={dateInputRef}
+              type="date"
+              id="date-picker"
+              value={selectedDate.split("_").reverse().join("-")}
+              onChange={onDateChange}
+              onBlur={() => setShowDateInput(false)}
+              style={{
+                padding: "8px",
+                borderRadius: "4px",
+                border: "1px solid #ccc",
+                cursor: "pointer",
+              }}
+            />
+          )}
+        </div>
+      </div>
 
       {currentPath !== getTodayFolder() && (
         <button onClick={handleBack} style={{ marginBottom: "10px" }}>
@@ -227,14 +286,31 @@ function MediaGallery({ basePath, onFolderCreated }) {
                   style={{
                     width: "200px",
                     height: "150px",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    background: "#eee",
-                    fontWeight: "bold",
+                    position: "relative",
+                    backgroundImage: `url(${process.env.PUBLIC_URL}/public_folder.png)`,
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
                   }}
                 >
-                  {item.folder}
+                  <div
+                    style={{
+                      position: "absolute",
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      backgroundColor: "rgba(0, 0, 0, 0.5)",
+                      color: "white",
+                      padding: "8px",
+                      textAlign: "center",
+                      fontWeight: "bold",
+                      fontSize: "14px",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {item.folder}
+                  </div>
                 </div>
               ) : (
                 <img

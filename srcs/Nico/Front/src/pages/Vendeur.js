@@ -28,6 +28,21 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
   const [tabColor, setTabColor] = useState(defaultTabColor);
   const [tempTabColor, setTempTabColor] = useState(defaultTabColor);
   const [tempBackgroundImagePath, setTempBackgroundImagePath] = useState(backgroundImagePath || '/backgroudNoel2.jpg');
+  
+  const today = new Date();
+  const [selectedDate, setSelectedDate] = useState(`${String(today.getDate()).padStart(2, '0')}_${String(today.getMonth() + 1).padStart(2, '0')}_${today.getFullYear()}`);
+  
+  const formatDateToString = (date) => {
+    return `${String(date.getDate()).padStart(2, '0')}_${String(date.getMonth() + 1).padStart(2, '0')}_${date.getFullYear()}`;
+  };
+  
+  const handleDateChange = (e) => {
+    const dateString = e.target.value; // format: YYYY-MM-DD
+    if (dateString) {
+      const date = new Date(dateString);
+      setSelectedDate(formatDateToString(date));
+    }
+  };
 
   const leftMenuActions = [
     { key: 'upload', title: 'Téléchargement', subtitle: 'Photos', icon: '/download.png' },
@@ -183,6 +198,7 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
           <MailArchiveTab
             thumbStyle={thumbStyle}
             getCacheBustedPath={(path) => getCacheBustedPath(imageCacheBuster)(path)}
+            selectedDate={selectedDate}
           />
         );
       case 'edit':
@@ -214,6 +230,7 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
             getCacheBustedPath={(path) => getCacheBustedPath(imageCacheBuster)(path)}
             isSamePath={isSamePath}
             normalizePath={normalizePath}
+            selectedDate={selectedDate}
           />
         );
       case 'print':
@@ -226,6 +243,7 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
             handlePrint={handlePrintAndArchive}
             getCacheBustedPath={(path) => getCacheBustedPath(imageCacheBuster)(path)}
             normalizePath={normalizePath}
+            selectedDate={selectedDate}
           />
         );
       case 'settings':
@@ -294,7 +312,7 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
               <img src="/retour.png" alt="Retour" style={{ width: 72, marginRight: 10 }} />
               Retour
             </button>
-            <div className="d-flex gap-4 flex-wrap justify-content-center">
+            <div className="d-flex gap-4 flex-wrap justify-content-center align-items-center">
               {navActions.map(action => (
                 <button
                   key={action.key}
@@ -307,6 +325,46 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
                   <img src={action.icon} alt={action.title} style={{ width: 110, height: 110 }} />
                 </button>
               ))}
+              {(activeTab === 'mail_archives' || activeTab === 'print') && (
+                <div className="d-flex flex-column align-items-center gap-3" style={{
+                  minWidth: 220,
+                  background: 'rgba(255,255,255,0.12)',
+                  borderRadius: 26,
+                  padding: '1.5rem',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                  backdropFilter: 'blur(10px)',
+                  boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
+                }}>
+                  <label style={{ color: textColor, fontWeight: 'bold', fontSize: '1.1rem', margin: 0 }}>📅 Date</label>
+                  <input
+                    type="date"
+                    value={selectedDate.split('_').reverse().join('-')}
+                    onChange={handleDateChange}
+                    className="form-control"
+                    style={{
+                      maxWidth: '160px',
+                      padding: '0.75rem',
+                      borderRadius: '12px',
+                      border: '2px solid rgba(255,255,255,0.4)',
+                      background: 'rgba(255,255,255,0.15)',
+                      color: textColor,
+                      fontWeight: '500',
+                      fontSize: '1rem'
+                    }}
+                  />
+                  <div style={{
+                    background: 'rgba(255,255,255,0.1)',
+                    padding: '0.6rem 1rem',
+                    borderRadius: '10px',
+                    color: textColor,
+                    fontWeight: '600',
+                    fontSize: '0.95rem',
+                    textAlign: 'center'
+                  }}>
+                    {selectedDate}
+                  </div>
+                </div>
+              )}
             </div>
             <button
               type="button"

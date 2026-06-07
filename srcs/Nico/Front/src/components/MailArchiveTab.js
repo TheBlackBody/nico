@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { Button, Row, Col, Card, Breadcrumb } from 'react-bootstrap';
 
-function MailArchiveTab({ thumbStyle, getCacheBustedPath }) {
+function MailArchiveTab({ thumbStyle, getCacheBustedPath, selectedDate }) {
   const [archiveFiles, setArchiveFiles] = useState([]);
   const [selectedFolder, setSelectedFolder] = useState('');
   const [folderImages, setFolderImages] = useState([]);
 
-  const today = new Date();
-  const todayKey = `${String(today.getDate()).padStart(2, '0')}_${String(today.getMonth() + 1).padStart(2, '0')}_${today.getFullYear()}`;
+  const todayKey = selectedDate || (() => {
+    const today = new Date();
+    return `${String(today.getDate()).padStart(2, '0')}_${String(today.getMonth() + 1).padStart(2, '0')}_${today.getFullYear()}`;
+  })();
 
   useEffect(() => {
     const fetchArchives = async () => {
