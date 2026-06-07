@@ -6,6 +6,7 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
+  const [copyFullFolders, setCopyFullFolders] = useState(false);
 
   useEffect(() => {
     if (images && images.length > 0) {
@@ -50,16 +51,21 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
         body: JSON.stringify({
           email,
           files: globalCart,
+          copy_full_folders: copyFullFolders,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        alert(`✅ ${data.copied.length} image(s) enregistrée(s) pour ${email}`);
+        const wabMessage = copyFullFolders
+          ? ` et ${data.wab_copied?.length || 0} fichier(s) copiés dans wab_validation`
+          : "";
+        alert(`✅ ${data.copied.length} image(s) enregistrée(s) pour ${email}${wabMessage}`);
         setGlobalCart([]);
         setShowEmailPrompt(false);
         setEmail("");
+        setCopyFullFolders(false);
         window.location.reload(); // ✅ rafraîchit la page
       } else {
         alert("Erreur : " + data.error);
@@ -226,10 +232,26 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
               className="form-control my-3"
               disabled={loading}
             />
+            <div className="form-check text-start mb-3">
+              <input
+                id="copyFullFolders"
+                type="checkbox"
+                className="form-check-input"
+                checked={copyFullFolders}
+                onChange={(e) => setCopyFullFolders(e.target.checked)}
+                disabled={loading}
+              />
+              <label className="form-check-label" htmlFor="copyFullFolders">
+                Copier aussi les images du même dossier que chaque image sélectionnée dans <strong>wab_validation</strong>
+              </label>
+            </div>
             <div className="d-flex justify-content-between">
               <button
                 className="btn btn-secondary"
-                onClick={() => setShowEmailPrompt(false)}
+                onClick={() => {
+                  setShowEmailPrompt(false);
+                  setCopyFullFolders(false);
+                }}
                 disabled={loading}
               >
                 Annuler
