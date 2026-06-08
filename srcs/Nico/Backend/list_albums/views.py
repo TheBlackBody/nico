@@ -71,6 +71,21 @@ def mail_archives(request):
     archive_files = get_all_files(archive_root, url_base=archive_url_base)
     return JsonResponse(archive_files, safe=False)
 
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def impress_archives(request):
+    date_key = request.GET.get('date')
+    if not date_key:
+        date_key = datetime.now().strftime('%d_%m_%Y')
+
+    archive_root = os.path.join(settings.MEDIA_ROOT, 'archive impression', date_key)
+    if not os.path.isdir(archive_root):
+        return JsonResponse([], safe=False)
+
+    archive_url_base = os.path.join(settings.MEDIA_URL.rstrip('/'), 'archive impression', date_key)
+    archive_files = get_all_files(archive_root, url_base=archive_url_base)
+    return JsonResponse(archive_files, safe=False)
+
 @api_view(["POST"])
 def create_client_folder(request):
     client = request.data.get("client")

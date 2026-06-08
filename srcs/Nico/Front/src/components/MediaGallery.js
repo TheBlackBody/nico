@@ -226,7 +226,7 @@ function MediaGallery({ basePath, selectedDate, onDateChange, onFolderCreated })
             <img
               src={`${process.env.PUBLIC_URL}/cal.png`}
               alt="Sélectionner une date"
-              style={{ width: "32px", height: "32px" }}
+              style={{ width: "64px", height: "64px" }}
             />
           </button>
           {showDateInput && (

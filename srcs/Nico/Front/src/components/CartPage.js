@@ -98,7 +98,7 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
               }}
               onClick={goPrev}
             >
-              <img src={`${process.env.PUBLIC_URL}/left.png`} alt="Précédent" style={{ width: "50px", height: "50px" }} />
+              <img src={`${process.env.PUBLIC_URL}/left.png`} alt="Précédent" style={{ width: "100px", height: "100px" }} />
             </button>
 
             {/* Image principale au centre */}
@@ -128,7 +128,7 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
               }}
               onClick={goNext}
             >
-              <img src={`${process.env.PUBLIC_URL}/right.png`} alt="Suivant" style={{ width: "50px", height: "50px" }} />
+              <img src={`${process.env.PUBLIC_URL}/right.png`} alt="Suivant" style={{ width: "100px", height: "100px" }} />
             </button>
 
             {/* Boutons d’action sous l’image */}
@@ -141,7 +141,7 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
                 }}
                 onClick={() => handleAddToCart(selectedImage)}
               >
-                <img src={`${process.env.PUBLIC_URL}/add.png`} alt="Ajouter au panier" style={{ width: "60px", height: "60px" }} />
+                <img src={`${process.env.PUBLIC_URL}/add.png`} alt="Ajouter au panier" style={{ width: "120px", height: "120px" }} />
               </button>
               <button
                 style={{
@@ -151,7 +151,7 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
                 }}
                 onClick={onBackToGallery}
               >
-                <img src={`${process.env.PUBLIC_URL}/back.png`} alt="Retour à la galerie" style={{ width: "60px", height: "60px" }} />
+                <img src={`${process.env.PUBLIC_URL}/back.png`} alt="Retour à la galerie" style={{ width: "120px", height: "120px" }} />
               </button>
             </div>
           </>
@@ -160,91 +160,94 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
         )}
       </div>
 
-      {/* Sidebar panier */}
-      <div
-        style={{
-          width: "300px",
-          height: "calc(100vh - 30px)",
-          marginBottom: "30px",
-          padding: "1rem",
-          backgroundColor: "rgba(255, 255, 255, 0.3)",
-          borderLeft: "2px solid #000",
-          backdropFilter: "blur(5px)",
-          display: "flex",
-          flexDirection: "column",
-          overflow: "hidden",
-        }}
-      >
-        <h5>🛒 Panier ({globalCart.length})</h5>
-        <div style={{ flex: 1, overflowY: "auto", marginTop: "0.5rem", position: "relative" }}>
-          {globalCart.length > 0 ? (
-            globalCart.map((img, idx) => (
-              <div
-                key={idx}
-                style={{
-                  position: "relative",
-                  marginBottom: "1rem",
-                  height: "300px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}
-              >
-                <img
-                  src={img}
-                  alt={`panier-${idx}`}
-                  style={{
-                    width: "300px",
-                    height: "300px",
-                    objectFit: "cover",
-                                        borderRadius: "8px",
-                                        boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-                    cursor: "pointer",
-                  }}
-                  onClick={() => setSelectedImage(img)}
-                />
-                <button
-                  style={{
-                    position: "absolute",
-                    top: "-10px",
-                    right: "-10px",
-                    background: "rgba(255, 0, 0, 0.8)",
-                    border: "none",
-                    borderRadius: "50%",
-                    width: "30px",
-                    height: "30px",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    cursor: "pointer",
-                    fontSize: "18px",
-                    padding: 0,
-                  }}
-                  onClick={() => handleRemoveFromCart(img)}
-                >
-                  ❌
-                </button>
-              </div>
-            ))
-          ) : (
-            <p style={{ textAlign: "center", color: "#666" }}>Panier vide</p>
-          )}
-        </div>
-        <button
-          style={{
-            background: "none",
-            border: "none",
-            cursor: globalCart.length === 0 ? "not-allowed" : "pointer",
-            opacity: globalCart.length === 0 ? 0.5 : 1,
-            marginTop: "1rem",
-                      flexShrink: 0,
-          }}
-          onClick={handleConfirm}
-          disabled={globalCart.length === 0}
-        >
-          <img src={`${process.env.PUBLIC_URL}/confirm.png`} alt="Confirmer le panier" style={{ width: "60px", height: "60px" }} />
-        </button>
-      </div>
+     {/* Sidebar panier */}
+     <div
+       style={{
+         width: "300px",
+         height: "calc(100vh - 30px)",
+         marginBottom: "30px",
+         padding: "1rem",
+         backgroundColor: "rgba(255, 255, 255, 0.3)",
+         borderLeft: "2px solid #000",
+         backdropFilter: "blur(5px)",
+         display: "flex",
+         flexDirection: "column",
+         overflow: "hidden",
+       }}
+     >
+       <h5>🛒 Panier ({globalCart.length})</h5>
+       <div style={{ flex: 1, overflowY: "auto", marginTop: "0.5rem", position:      "relative" }}>
+         {globalCart.length > 0 ? (
+           globalCart.map((img, idx) => (
+             <div
+               key={idx}
+               style={{
+                 position: "relative",
+                 marginBottom: "1rem",
+                 width: "80px",          // Le conteneur fait maintenant la largeur      exacte de l'image
+                 height: "80px",         // Le conteneur s'adapte à la hauteur de      l'image
+                 display: "flex",
+                 alignItems: "center",
+                 justifyContent: "flex-start", // Aligne le bloc à gauche
+               }}
+             >
+               <img
+                 src={img}
+                 alt={`panier-${idx}`}
+                 style={{
+                   width: "80px",
+                   height: "80px",
+                   objectFit: "cover",
+                   borderRadius: "8px",
+                   boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+                   cursor: "pointer",
+                 }}
+                 onClick={() => setSelectedImage(img)}
+               />
+               <button
+                 style={{
+                   position: "absolute",
+                   top: "-5px",          // Ajusté pour chevaucher légèrement le       coin supérieur droit de la vignette
+                   right: "-5px",        // Ajusté pour se caler pile sur le bord      droit de la vignette de 80px
+                   background: "rgba(255, 0, 0, 0.9)",
+                   border: "none",
+                   borderRadius: "50%",
+                   width: "24px",         // Légèrement réduit pour mieux s'adapter      à une image de 80px
+                   height: "24px",        // Légèrement réduit
+                   display: "flex",
+                   alignItems: "center",
+                   justifyContent: "center",
+                   cursor: "pointer",
+                   fontSize: "12px",      // Diminué pour centrer correctement le ❌       dans un petit bouton
+                   padding: 0,
+                   zIndex: 5,             // S'assure que le bouton reste au-dessus
+                   boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                 }}
+                 onClick={() => handleRemoveFromCart(img)}
+               >
+                 ❌
+               </button>
+             </div>
+           ))
+         ) : (
+           <p style={{ textAlign: "center", color: "#666" }}>Panier vide</p>
+         )}
+       </div>
+       <button
+         style={{
+           background: "none",
+           border: "none",
+           cursor: globalCart.length === 0 ? "not-allowed" : "pointer",
+           opacity: globalCart.length === 0 ? 0.5 : 1,
+           marginTop: "1rem",
+           flexShrink: 0,
+         }}
+         onClick={handleConfirm}
+         disabled={globalCart.length === 0}
+       >
+         <img src={`${process.env.PUBLIC_URL}/confirm.png`} alt="Confirmer le      panier" style={{ width: "120px", height: "120px" }} />
+       </button>
+     </div>
 
       {/* Popup email */}
       {showEmailPrompt && (

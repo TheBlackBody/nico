@@ -1,5 +1,20 @@
 from django.urls import path
-from .views import create_client_folder, list_albums, mail_archives, confirm_cart, upload_images, send_email_images, replace_image, apply_image_edits, validate_image, get_app_settings, update_app_settings, archive_print_images
+# AJOUT de 'impress_archives' dans l'import ci-dessous :
+from .views import (
+    create_client_folder, 
+    list_albums, 
+    mail_archives, 
+    impress_archives,
+    confirm_cart, 
+    upload_images, 
+    send_email_images, 
+    replace_image, 
+    apply_image_edits, 
+    validate_image, 
+    get_app_settings, 
+    update_app_settings, 
+    archive_print_images
+)
 
 urlpatterns = [
     path("liste/", list_albums, name="list_albums"),
@@ -7,6 +22,10 @@ urlpatterns = [
     path('confirm-cart/', confirm_cart, name='confirm_cart'),
     path('upload/', upload_images, name='upload_images'),
     path('send-email/', send_email_images, name='send_email_images'),
+    
+    # On garde bien la fonction originale ici :
+    path('impress-archives/', impress_archives, name='impress_archives'),
+    
     path('mail-archives/', mail_archives, name='mail_archives'),
     path('archive-print/', archive_print_images, name='archive_print_images'),
     path('replace-image/', replace_image, name='replace_image'),

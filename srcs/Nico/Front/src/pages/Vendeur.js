@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import UploadTab from '../components/UploadTab';
 import MailSendTab from '../components/MailSendTab';
+import ImpressArchiveTab from '../components/ImpressArchiveTab';
 import MailArchiveTab from '../components/MailArchiveTab';
 import EditTab from '../components/EditTab';
 import PrintTab from '../components/PrintTab';
@@ -28,6 +29,7 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
   const [tabColor, setTabColor] = useState(defaultTabColor);
   const [tempTabColor, setTempTabColor] = useState(defaultTabColor);
   const [tempBackgroundImagePath, setTempBackgroundImagePath] = useState(backgroundImagePath || '/backgroudNoel2.jpg');
+  const publicUrl = process.env.PUBLIC_URL || '';
   
   const today = new Date();
   const [selectedDate, setSelectedDate] = useState(`${String(today.getDate()).padStart(2, '0')}_${String(today.getMonth() + 1).padStart(2, '0')}_${today.getFullYear()}`);
@@ -51,7 +53,7 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
   ];
 
   const rightMenuActions = [
-    { key: 'print', title: 'Archives', subtitle: 'Impressions', icon: '/archives_impress.png' },
+    { key: 'archives_impress', title: 'Archives', subtitle: 'Impressions', icon: '/archives_impress.png' },
     { key: 'mail_archives', title: 'Archives', subtitle: 'Mails', icon: '/archives_mails.png' },
     { key: 'settings', title: 'Paramètres', subtitle: 'Configuration', icon: '/parametre.png' },
   ];
@@ -201,6 +203,14 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
             selectedDate={selectedDate}
           />
         );
+      case 'archives_impress':
+        return (
+          <ImpressArchiveTab
+            thumbStyle={thumbStyle}
+            getCacheBustedPath={(path) => getCacheBustedPath(imageCacheBuster)(path)}
+            selectedDate={selectedDate}
+          />
+        );
       case 'edit':
         return (
           <EditTab
@@ -298,8 +308,44 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
   };
 
   return (
-    <div className="container-fluid mt-3" style={{ color: textColor }}>
+    <div className="container-fluid mt-3" style={{ color: textColor, position: 'relative', minHeight: '100vh' }}>
       <style>{printStyles}</style>
+      {/* background global persistent pour /vendeur */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        zIndex: -1,
+        backgroundImage: `url(${publicUrl}/PC_vendeur.png)`,
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+      }} />
+
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        pointerEvents: 'none',
+        zIndex:0,
+      }}>
+        <div style={{
+          width: '90vw',
+          maxWidth: 1400,
+          maxHeight: '90vh',
+          backgroundImage: `url(${publicUrl}/PC_vendeur.png)`,
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'center',
+          backgroundSize: 'contain',
+          opacity: 0.85,
+          filter: 'saturate(105%)',
+          transform: 'translateZ(0)'
+        }} />
+
+      </div>
       <div className="d-flex align-items-center justify-content-between mb-4 flex-wrap">
         {!isMenu ? (
           <>
@@ -325,7 +371,7 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
                   <img src={action.icon} alt={action.title} style={{ width: 110, height: 110 }} />
                 </button>
               ))}
-              {(activeTab === 'mail_archives' || activeTab === 'print') && (
+              {(activeTab === 'mail_archives' || activeTab === 'archives_impress') && (
                 <div className="d-flex flex-column align-items-center gap-3" style={{
                   minWidth: 220,
                   background: 'rgba(255,255,255,0.12)',
@@ -376,81 +422,73 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
             </button>
           </>
         ) : (
-          <h1 style={{ color: textColor, width: '100%' }}>Interface Vendeur</h1>
+          ""
         )}
       </div>
       {isMenu ? (
-        <div className="row gy-4 justify-content-center align-items-center">
-          <div className="col-12 col-lg-4 d-flex flex-column gap-4">
-            {leftMenuActions.map(action => (
-              <button
-                key={action.key + action.subtitle}
-                type="button"
-                className="w-100 d-flex align-items-center justify-content-start shadow-lg"
-                onClick={() => setActiveTab(action.key)}
-                style={{
-                  minHeight: 210,
-                  borderRadius: 36,
-                  border: '1px solid rgba(255, 255, 255, 0.61)',
-                  background: 'rgba(255, 255, 255, 0.52)',
-                  color: textColor,
-                  padding: '1.5rem',
-                  gap: '1rem',
-                }}
-                aria-label={action.title}
-              >
-                <img src={action.icon} alt={action.title} style={{ width: 130, height: 130, objectFit: 'contain' }} />
-                <div style={{ textAlign: 'left', flex: 1 }}>
-                  <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#042556' }}>{action.title}</h4>
-                  <div style={{ fontWeight: 700, color: '#042556', fontSize: '1rem' }}>{action.subtitle}</div>
-                </div>
-              </button>
-            ))}
-          </div>
+        <div style={{ position: 'relative', zIndex: 2 }} >
+            <div className="row gx-5 gy-4 justify-content-center align-items-center">
+              <div className="col-12 col-lg-4 d-flex flex-column gap-4">
+                {leftMenuActions.map(action => (
+                  <button
+                    key={action.key + action.subtitle}
+                    type="button"
+                    className="w-100 d-flex align-items-center justify-content-start shadow-lg"
+                    onClick={() => setActiveTab(action.key)}
+                    style={{
+                      height: 200,
+                      minHeight: 130,
+                      borderRadius: 36,
+                      border: '1px solid rgba(255, 255, 255, 0.61)',
+                      background: 'rgba(255, 255, 255, 0.52)',
+                      color: textColor,
+                      padding: '1.5rem',
+                      gap: '1rem',
+                      overflow: 'visible',
+                    }}
+                    aria-label={action.title}
+                  >
+                    <img src={action.icon} alt={action.title} style={{ width: 130, height: 130, objectFit: 'contain', transform: 'scale(1.6)', transformOrigin: 'left center', flexShrink: 0 }} />
+                    <div style={{ textAlign: 'right', flex: 1 }}>
+                      <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#042556' }}>{action.title}</h4>
+                      <div style={{ fontWeight: 700, color: '#042556', fontSize: '1rem' }}>{action.subtitle}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
 
-          <div className="col-12 col-lg-4 d-flex align-items-center justify-content-center px-4">
-            <div style={{
-              width: '200%',
-              minHeight: 420,
-              borderRadius: 36,
-              border: '1px solid rgba(255,255,255,0.32)',
-              background: 'rgba(255,255,255,0.14)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '2rem 1.5rem',
-            }}>
-              <img src="/PC_vendeur.png" alt="Instantapix" style={{ width: '200%', maxWidth: 280, objectFit: 'contain' }} />
+              {/* colonne centrale supprimée — seul l'arrière-plan image est conservé */}
+
+              <div className="col-12 col-lg-4 d-flex flex-column gap-4">
+                {rightMenuActions.map(action => (
+                  <button
+                    key={action.key + action.subtitle}
+                    type="button"
+                    className="w-100 d-flex align-items-center justify-content-start shadow-lg"
+                    onClick={() => setActiveTab(action.key)}
+                    style={{
+                      height: 200,
+                      minHeight: 130,
+                      borderRadius: 36,
+                      border: '1px solid rgba(255, 255, 255, 0.61)',
+                      background: 'rgba(255, 255, 255, 0.52)',
+                      color: textColor,
+                      padding: '1.5rem',
+                      gap: '1rem',
+                      overflow: 'visible',
+                    }}
+                    aria-label={action.title}
+                  >
+                    <img src={action.icon} alt={action.title} style={{ width: 130, height: 130, objectFit: 'contain', transform: 'scale(1.6)', transformOrigin: 'left center', flexShrink: 0 }} />
+                    <div style={{ textAlign: 'right', flex: 1 }}>
+                      <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#042556' }}>{action.title}</h4>
+                      <div style={{ fontWeight: 700, color: '#042556', fontSize: '1rem' }}>{action.subtitle}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
-
-          <div className="col-12 col-lg-4 d-flex flex-column gap-4">
-            {rightMenuActions.map(action => (
-              <button
-                key={action.key + action.subtitle}
-                type="button"
-                className="w-100 d-flex align-items-center justify-content-start shadow-lg"
-                onClick={() => setActiveTab(action.key)}
-                style={{
-                  minHeight: 210,
-                  borderRadius: 36,
-                  border: '1px solid rgba(255, 255, 255, 0.61)',
-                  background: 'rgba(255, 255, 255, 0.52)',
-                  color: textColor,
-                  padding: '1.5rem',
-                  gap: '1rem',
-                }}
-                aria-label={action.title}
-              >
-                <img src={action.icon} alt={action.title} style={{ width: 130, height: 130, objectFit: 'contain' }} />
-                <div style={{ textAlign: 'left', flex: 1 }}>
-                  <h4 style={{ margin: 0, fontSize: '1.3rem', fontWeight: 700, color: '#042556' }}>{action.title}</h4>
-                  <div style={{ fontWeight: 700, color: '#042556', fontSize: '1rem' }}>{action.subtitle}</div>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
       ) : (
         <div className="mb-3">
           {renderContent()}
