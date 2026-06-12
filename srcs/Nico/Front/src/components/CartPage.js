@@ -92,8 +92,8 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
                 top: "50%",
                 transform: "translateY(-50%)",
                 zIndex: 10,
-                background: "none",
-                border: "none",
+                border: '1px solid rgba(255, 255, 255, 0.61)',
+                background: 'rgba(156, 156, 156, 0.52)',
                 cursor: "pointer",
               }}
               onClick={goPrev}
@@ -122,8 +122,8 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
                 top: "50%",
                 transform: "translateY(-50%)",
                 zIndex: 10,
-                background: "none",
-                border: "none",
+                border: '1px solid rgba(255, 255, 255, 0.61)',
+                background: 'rgba(156, 156, 156, 0.52)',
                 cursor: "pointer",
               }}
               onClick={goNext}
@@ -135,8 +135,8 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
             <div className="mt-4 d-flex justify-content-center gap-3">
               <button
                 style={{
-                  background: "none",
-                  border: "none",
+                  border: '1px solid rgba(255, 255, 255, 0.61)',
+                  background: 'rgba(156, 156, 156, 0.52)',
                   cursor: "pointer",
                 }}
                 onClick={() => handleAddToCart(selectedImage)}
@@ -145,8 +145,8 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
               </button>
               <button
                 style={{
-                  background: "none",
-                  border: "none",
+                  border: '1px solid rgba(255, 255, 255, 0.61)',
+                  background: 'rgba(156, 156, 156, 0.52)',
                   cursor: "pointer",
                 }}
                 onClick={onBackToGallery}

@@ -114,10 +114,15 @@ function MediaGallery({ basePath, selectedDate, onDateChange, onFolderCreated })
     setSelectedRange([]);
   };
 
+  // ✅ CORRECTION ICI : Redirige le navigateur directement sur l'URL "/"
   const handleBack = () => {
-    const parts = currentPath.split("/");
-    parts.pop();
-    setCurrentPath(parts.join("/"));
+    if (currentPath === getTodayFolder()) {
+      window.location.href = "/";
+    } else {
+      const parts = currentPath.split("/");
+      parts.pop();
+      setCurrentPath(parts.join("/"));
+    }
     setSelectedRange([]);
   };
 
@@ -248,7 +253,8 @@ function MediaGallery({ basePath, selectedDate, onDateChange, onFolderCreated })
         </div>
       </div>
 
-      {currentPath !== getTodayFolder() && (
+      {/* ✅ Le bouton s'affiche toujours tant qu'on a un chemin valide */}
+      {currentPath && (
         <button onClick={handleBack} style={{ marginBottom: "10px" }}>
           🔙 Retour
         </button>
