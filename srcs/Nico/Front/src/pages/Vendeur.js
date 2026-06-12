@@ -7,8 +7,8 @@ import EditTab from '../components/EditTab';
 import PrintTab from '../components/PrintTab';
 import { useAlbums } from '../hooks/useAlbums';
 import { useUIHandlers } from '../hooks/useUIHandlers';
-import { normalizePath, getCacheBustedPath, isSamePath, getPresetStyle, getPrintSizeStyle } from '../utils/imageUtils';
-import { thumbStyle, previewStyle, printStyle, textColor, printStyles } from '../constants/styles';
+import { normalizePath, getCacheBustedPath, isSamePath, getPresetStyle } from '../utils/imageUtils'; // <-- getPrintSizeStyle supprimé
+import { thumbStyle, previewStyle, textColor, printStyles } from '../constants/styles'; // <-- printStyle supprimé
 
 function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
   const [activeTab, setActiveTab] = useState('menu');
@@ -124,40 +124,42 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
     setTempBackgroundImagePath(backgroundImagePath || '/backgroudNoel2.jpg');
   }, [backgroundImagePath]);
 
-  const { albums, wabAlbums, fetchAlbums, handleUpload: uploadImages, handleReplaceImage: replaceImage, handleApplyEdits: applyEdits } = useAlbums();
-  const { printRef, handleBack, handleExitEditor, handlePrint } = useUIHandlers();
+  // Trouver cette section dans votre useEffect / hooks :
+  const { albums, wabAlbums, fetchAlbums, handleUpload: uploadImages,   handleReplaceImage: replaceImage, handleApplyEdits: applyEdits } = useAlbums();
+  // Remplacer handlePrint par handlePrintSingle :
+  const { handleBack, handleExitEditor, handlePrintSingle } =   useUIHandlers();
 
-  const archivePrint = async () => {
-    if (selectedImages.length === 0) {
-      return;
-    }
+  // MODIFICATION : archivePrint accepte maintenant l'image cible directement
+  const archivePrint = async (targetImage) => {
+    if (!targetImage) return;
 
-    const firstFolder = selectedImages[0]?.folder;
     try {
       const response = await fetch('/api/albums/archive-print/', {
+        style: 'POST',
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          folder: firstFolder,
-          files: selectedImages.map(img => img.path),
+          folder: targetImage.folder,
+          files: [targetImage.path], // Uniquement l'image en cours d'impression
         }),
       });
       const data = await response.json();
       if (!response.ok) {
-        console.error(data.error || 'Erreur lors de l’archivage de l’impression');
-        alert(data.error || 'Erreur lors de l’archivage de l’impression');
-      } else {
-        alert(data.message || 'Impression archivée avec succès');
+        console.error(data.error || 'Erreur lors de l’archivage');
       }
     } catch (error) {
       console.error('Erreur archive impression:', error);
-      alert('Erreur lors de l’archivage de l’impression');
     }
   };
 
-  const handlePrintAndArchive = async () => {
-    handlePrint();
-    await archivePrint();
+  // MODIFICATION : Déclencheur individuel
+  const handlePrintAndArchive = async (img, format, quantity, shouldGroup) => {
+    const fullImgUrl = getCacheBustedPath(imageCacheBuster)(img.path);
+    
+    // Envoi des directives complètes à la fonction d'impression
+    handlePrintSingle(fullImgUrl, format, quantity, shouldGroup);
+    
+    await archivePrint(img);
   };
 
   const validatedEmails = [...new Set(albums.map(item => item.folder.split('/')[1]))];
@@ -244,18 +246,18 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
           />
         );
       case 'print':
-        return (
-          <PrintTab
-            selectedImages={selectedImages}
-            setActiveTab={setActiveTab}
-            printFormat={printFormat}
-            setPrintFormat={setPrintFormat}
-            handlePrint={handlePrintAndArchive}
-            getCacheBustedPath={(path) => getCacheBustedPath(imageCacheBuster)(path)}
-            normalizePath={normalizePath}
-            selectedDate={selectedDate}
-          />
-        );
+      return (
+        <PrintTab
+          selectedImages={selectedImages}
+          setActiveTab={setActiveTab}
+          printFormat={printFormat}
+          setPrintFormat={setPrintFormat}
+          handlePrint={handlePrintAndArchive} // Envoie la méthode paramétrée (img,format)
+          getCacheBustedPath={(path) => getCacheBustedPath(imageCacheBuster)(path)}
+          normalizePath={normalizePath}
+          selectedDate={selectedDate}
+        />
+      );
       case 'settings':
         return (
           <div className="p-3" style={{ background: 'rgba(255,255,255,0.12)', borderRadius: 20 }}>
@@ -494,13 +496,6 @@ function Vendeur({ setGlobalBackgroundImagePath, backgroundImagePath }) {
           {renderContent()}
         </div>
       )}
-      <div ref={printRef} className="print-only" style={{ display: 'none' }}>
-        {selectedImages.map(img => (
-          <div key={normalizePath(img.path)} className="print-sheet" style={{ ...getPrintSizeStyle(printFormat), marginBottom: '1cm' }}>
-            <img src={getCacheBustedPath(imageCacheBuster)(img.path)} alt="" style={printStyle} />
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
