@@ -11,6 +11,8 @@ from PIL import Image, ImageEnhance, ImageOps
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework import status
+from django.core.mail import EmailMultiAlternatives 
+from django.utils.html import strip_tags
 import requests
 
 
@@ -303,6 +305,143 @@ def _upload_zip_to_transfer(transfer_id, zip_path, transfer_file, headers):
 
     _complete_transfer_file_upload(transfer_id, file_id, upload_id, headers)
 
+import os
+import tempfile
+import zipfile
+import requests
+from datetime import datetime, timedelta
+from django.http import JsonResponse
+from django.conf import settings
+from django.core.mail import EmailMessage
+from rest_framework import status
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+
+# On importe les variables et fonctions d'upload existantes de votre fichier
+# (Ajustez les imports si nécessaire selon votre structure)
+from .views import (
+    TRANSFERNOW_API_KEY, 
+    TRANSFERNOW_API_URL, 
+    _upload_zip_to_transfer, 
+    _complete_transfer_upload
+)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def send_uploaded_files_direct(request):
+    # Récupération de l'email (dans request.data)
+    email_to = request.data.get('email')
+    
+    # Récupération des fichiers physiques bruts (dans request.FILES)
+    uploaded_files = request.FILES.getlist('files')
+    
+    subject = request.data.get('subject', 'Vos fichiers (images/vidéos) sont disponibles')
+    message = request.data.get('message', 'Une archive contenant vos fichiers a été préparée.')
+    validity_days = int(request.data.get('validityDays', 7))
+    max_downloads = int(request.data.get('maxDownloads', 7))
+    allow_preview = bool(request.data.get('allowPreview', True))
+    lang_code = request.data.get('langCode', 'fr')
+
+    # Validation
+    if not email_to or not uploaded_files:
+        return JsonResponse({'error': 'Email ou fichiers manquants'}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not TRANSFERNOW_API_KEY:
+        return JsonResponse({'error': 'TRANSFERNOW_API_KEY non configurée'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # Création du fichier ZIP temporaire (sans stockage persistant)
+    with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as temp_zip:
+        zip_path = temp_zip.name
+
+    try:
+        # Écriture des fichiers téléversés directement dans le ZIP
+        with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+            for f in uploaded_files:
+                # On lit les morceaux (chunks) du fichier en mémoire pour éviter d'exploser la RAM
+                # et on l'écrit directement dans le ZIP
+                with tempfile.NamedTemporaryFile(delete=False) as chunk_tmp:
+                    for chunk in f.chunks():
+                        chunk_tmp.write(chunk)
+                    chunk_tmp.close()
+                    zipf.write(chunk_tmp.name, f.name)
+                    os.unlink(chunk_tmp.name)
+
+        # Récupération de la taille finale du ZIP pour TransferNow
+        zip_size = os.path.getsize(zip_path)
+
+        # Préparation du payload TransferNow
+        payload = {
+            'langCode': lang_code,
+            'toEmails': [email_to],
+            'files': [{
+                'name': 'fichiers_transfert.zip',
+                'size': zip_size
+            }],
+            'message': message,
+            'subject': subject,
+            'validityStart': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'validityEnd': (datetime.utcnow() + timedelta(days=validity_days)).strftime('%Y-%m-%dT%H:%M:%SZ'),
+            'allowPreview': allow_preview,
+            'maxDownloads': max_downloads
+        }
+
+        transfer_headers = {
+            'Content-Type': 'application/json',
+            'x-api-key': TRANSFERNOW_API_KEY
+        }
+
+        # 1. Création du transfert sur l'API externe
+        transfer_response = requests.post(TRANSFERNOW_API_URL, headers=transfer_headers, json=payload)
+        if transfer_response.status_code not in [200, 201]:
+            return JsonResponse({
+                'error': 'Échec de la création du transfert TransferNow',
+                'details': transfer_response.text
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        transfer_data = transfer_response.json()
+        transfer_files = transfer_data.get('files', [])
+        if not transfer_files:
+            return JsonResponse({'error': 'Réponse TransferNow invalide : aucun fichier'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        transfer_id = transfer_data.get('transferId')
+        if not transfer_id:
+            return JsonResponse({'error': 'Impossible de récupérer transferId TransferNow'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # 2. Upload du fichier ZIP vers l'infrastructure de TransferNow
+        _upload_zip_to_transfer(transfer_id, zip_path, transfer_files[0], transfer_headers)
+        _complete_transfer_upload(transfer_id, transfer_headers)
+
+        # 3. Récupération du lien généré
+        download_link = transfer_data.get('link') or transfer_data.get('url')
+        if not download_link:
+            return JsonResponse({'error': 'Impossible de récupérer le lien TransferNow'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # 4. Envoi de l'email avec le lien
+        email_body = f""""Bonjour,
+
+Une archive contenant vos fichiers (images/vidéos) a bien été préparée et mise en ligne.
+
+Vous allez recevoir (ou avez déjà reçu) un e-mail distinct de la part de notre partenaire "TransferNow". Cet e-mail contient un bouton sécurisé vous permettant de télécharger directement vos fichiers.
+
+Pensez à vérifier vos courriers indésirables (spams) si vous ne le voyez pas apparaître d'ici quelques minutes.
+
+Cordialement."""
+
+        email = EmailMessage(subject, email_body, settings.DEFAULT_FROM_EMAIL, [email_to])
+        email.send()
+
+        return JsonResponse({
+            'success': True,
+            'email': email_to,
+            'download_link': download_link
+        })
+
+    finally:
+        # NETTOYAGE CRUCIAL : Le bloc 'finally' s'exécute QUOI QU'IL ARRIVE.
+        # Le fichier ZIP temporaire de plusieurs Go est immédiatement supprimé du disque.
+        if os.path.exists(zip_path):
+            os.unlink(zip_path)
+
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
@@ -323,6 +462,7 @@ def send_email_images(request):
     if not TRANSFERNOW_API_KEY:
         return JsonResponse({'error': 'TRANSFERNOW_API_KEY non configurée'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # Résolution des chemins physiques sur le serveur
     selected_paths = []
     for file_url in files:
         relative_path = file_url.replace(settings.MEDIA_URL, '').lstrip('/')
@@ -345,19 +485,23 @@ def send_email_images(request):
     source_folder = find_source_folder()
     archive_path = None
 
+    # Création du fichier ZIP temporaire
     with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as temp_zip:
         zip_path = temp_zip.name
 
     try:
+        # Compression des images sélectionnées
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for abs_path in selected_paths:
                 zipf.write(abs_path, os.path.basename(abs_path))
 
         zip_size = os.path.getsize(zip_path)
 
+        # --- ADAPTATION DU PAYLOAD TRANSFERNOW ---
+        # L'email cible est ajouté à toEmails pour déclencher l'envoi de leur côté
         payload = {
             'langCode': lang_code,
-            'toEmails': [],
+            'toEmails': [email_to],
             'files': [{
                 'name': 'images_selectionnees.zip',
                 'size': zip_size
@@ -375,6 +519,7 @@ def send_email_images(request):
             'x-api-key': TRANSFERNOW_API_KEY
         }
 
+        # 1. Enregistrement du transfert
         transfer_response = requests.post(TRANSFERNOW_API_URL, headers=transfer_headers, json=payload)
         if transfer_response.status_code not in [200, 201]:
             return JsonResponse({
@@ -391,6 +536,7 @@ def send_email_images(request):
         if not transfer_id:
             return JsonResponse({'error': 'Impossible de récupérer transferId TransferNow'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # 2. Téléversement physique du ZIP vers l'infrastructure TransferNow
         _upload_zip_to_transfer(transfer_id, zip_path, transfer_files[0], transfer_headers)
         _complete_transfer_upload(transfer_id, transfer_headers)
 
@@ -398,18 +544,28 @@ def send_email_images(request):
         if not download_link:
             return JsonResponse({'error': 'Impossible de récupérer le lien TransferNow'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+        # --- ENVOI DU MAIL D'EXPLICATION (SANS LIEN INTERNE) ---
         email_body = f"""Bonjour,
 
-{message}
+Une sélection de vos images a bien été empaquetée et mise en ligne.
 
-Vous pouvez télécharger votre transfert ici :
-{download_link}
+Un second e-mail envoyé par notre partenaire "TransferNow" vient de vous être expédié (ou va arriver sous peu). Il contient un bouton sécurisé vous permettant de télécharger l'archive de vos fichiers.
+
+Pensez à vérifier vos courriers indésirables (spams) si cet e-mail de téléchargement ne vous parvient pas d'ici quelques instants.
 
 Cordialement."""
 
-        email = EmailMessage(subject, email_body, settings.DEFAULT_FROM_EMAIL, [email_to])
+        # Le mail part vers l'adresse configurée et met le client final en copie (ou directement au client selon votre préférence)
+        email = EmailMessage(
+            subject="Vos images sélectionnées sont prêtes",
+            body=email_body,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=['photos.instantapix@gmail.com'],
+            cc=[email_to]
+        )
         email.send()
 
+        # 4. Traitement optionnel de l'archivage du dossier source
         if source_folder:
             try:
                 archived_dir = archive_directory(source_folder, 'archive mail')
@@ -419,6 +575,7 @@ Cordialement."""
                 print(f"Erreur lors de l'archivage du dossier email : {e}")
 
         response_data = {
+            'message': "Tout est good",
             'success': True,
             'email': email_to,
             'download_link': download_link,
@@ -428,6 +585,7 @@ Cordialement."""
             response_data['archived_folder'] = archive_path
 
         return JsonResponse(response_data)
+
     finally:
         if os.path.exists(zip_path):
             os.unlink(zip_path)

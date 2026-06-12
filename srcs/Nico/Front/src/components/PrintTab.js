@@ -11,6 +11,13 @@ function PrintTab({
   normalizePath,
   selectedDate
 }) {
+
+  // --- CALCUL DU RATIO D'ASPECT ---
+  // On extrait la largeur et la hauteur (ex: "10x15" -> width: 10, height: 15)
+  const [formatWidth, formatHeight] = printFormat.split('x').map(Number);
+  // On calcule le ratio (ex: 15 / 10 = 1.5)
+  const aspectRatio = formatWidth && formatHeight ? formatWidth / formatHeight : 1;
+
   return (
     <div className="mt-3">
       <Button variant="secondary" className="mb-3" onClick={() => setActiveTab('edit')}>
@@ -33,17 +40,38 @@ function PrintTab({
               <option value="15x15">15x15 cm</option>
             </Form.Select>
           </Form.Group>
+          
           <div className="d-flex flex-wrap" style={{ gap: '1rem' }}>
             {selectedImages.map(img => (
-              <div key={normalizePath(img.path)} style={{ width: '180px' }}>
-                <img
-                  src={getCacheBustedPath(img.path)}
-                  style={{ width: '100%', height: '140px', objectFit: 'cover', border: '1px solid #ddd' }}
-                  alt="print preview"
-                />
+              <div key={normalizePath(img.path)} style={{ width: '150px' }}>
+                <div 
+                  style={{
+                    width: '100%',
+                    // La magie opère ici : la hauteur s'adapte automatiquement au format sélectionné !
+                    aspectRatio: `${aspectRatio}`, 
+                    border: '1px solid #ddd',
+                    backgroundColor: '#f0f0f0',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                >
+                  <img
+                    src={getCacheBustedPath(img.path)}
+                    style={{ 
+                      width: '100%', 
+                      height: '100%', 
+                      // 'contain' garantit que TOUTE l'image d'origine est visible sans être rognée
+                      objectFit: 'contain' 
+                    }}
+                    alt="print preview"
+                  />
+                </div>
               </div>
             ))}
           </div>
+          
           <div className="mt-3">
             <Button variant="primary" onClick={handlePrint}>Imprimer</Button>
           </div>

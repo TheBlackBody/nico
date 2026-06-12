@@ -13,7 +13,8 @@ from .views import (
     validate_image, 
     get_app_settings, 
     update_app_settings, 
-    archive_print_images
+    archive_print_images,
+    send_uploaded_files_direct
 )
 
 urlpatterns = [
@@ -22,6 +23,8 @@ urlpatterns = [
     path('confirm-cart/', confirm_cart, name='confirm_cart'),
     path('upload/', upload_images, name='upload_images'),
     path('send-email/', send_email_images, name='send_email_images'),
+
+    path('send-video/', send_uploaded_files_direct, name='send_uploaded_files_direct'),
     
     # On garde bien la fonction originale ici :
     path('impress-archives/', impress_archives, name='impress_archives'),

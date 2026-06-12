@@ -16,4 +16,4 @@ python3 manage.py makemigrations
 python3 manage.py migrate
 
 echo "Starting server..."
-exec gunicorn --bind 0.0.0.0:8000 Backend.wsgi:application
+exec gunicorn --bind 0.0.0.0:8000 Backend.wsgi:application --workers 3 --threads 4 --timeout 1800
