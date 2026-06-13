@@ -8,7 +8,7 @@ function PrintImageCard({
   getCacheBustedPath,
   normalizePath
 }) {
-  const [localFormat, setLocalFormat] = useState('10x15');
+  const [localFormat, setLocalFormat] = useState('15x20');
   const [quantity, setQuantity] = useState(1);
   const [isLandscape, setIsLandscape] = useState(true);
 
@@ -56,13 +56,10 @@ function PrintImageCard({
             value={localFormat} 
             onChange={e => setLocalFormat(e.target.value)}
           >
-            <option value="5x8">5x8 cm (Mini)</option>
-            <option value="10x15">10x15 cm (Standard)</option>
-            <option value="15x20">15x20 cm (Max Plein)</option>
-            <option value="9x13">9x13 cm</option>
-            <option value="11.5x15">11.5x15 cm</option>
-            <option value="13x18">13x18 cm</option>
-            <option value="15x15">15x15 cm (Carré)</option>
+            <option value="5x8">5x8</option>
+            <option value="10x15">10x15</option>
+            <option value="15x20">15x20</option>
+            <option value="15x15">15x15)</option>
           </Form.Select>
         </Form.Group>
 
