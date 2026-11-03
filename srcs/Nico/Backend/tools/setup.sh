@@ -1,15 +1,15 @@
-check_connection() {
-  nc -z $DB_HOST 5432
-}
+#!/bin/sh
 
-while true; do
+set -eu
+
+DB_HOST=${DB_HOST:-postgres}
+DB_PORT=${DB_PORT:-5432}
+
+until nc -z -w 1 "$DB_HOST" "$DB_PORT"; do
   echo "Trying to connect to PostgreSQL..."
-  if check_connection; then
-    echo "Connected to PostgreSQL!"
-    break
-  fi
   sleep 1
 done
+echo "Connected to PostgreSQL!"
 
 echo "Running migrations..."
 python3 manage.py makemigrations
