@@ -1,5 +1,33 @@
 import React, { useState, useEffect } from "react";
 
+function normalizeCartItems(items = []) {
+  return items
+    .map((item) => {
+      if (typeof item === "string") {
+        return { path: item, quantity: 1 };
+      }
+
+      const path = item?.path || item?.src || item?.image || item?.url;
+      const quantity = Number(item?.quantity ?? 1);
+
+      if (!path) {
+        return null;
+      }
+
+      return {
+        path,
+        quantity: Number.isFinite(quantity) && quantity > 0 ? Math.floor(quantity) : 1,
+      };
+    })
+    .filter(Boolean);
+}
+
+function flattenCartItems(items = []) {
+  return normalizeCartItems(items).flatMap((item) =>
+    Array.from({ length: item.quantity }, () => item.path)
+  );
+}
+
 function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -7,6 +35,9 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [copyFullFolders, setCopyFullFolders] = useState(false);
+
+  const normalizedCart = normalizeCartItems(globalCart);
+  const flattenedCart = flattenCartItems(globalCart);
 
   useEffect(() => {
     if (images && images.length > 0) {
@@ -16,11 +47,34 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
   }, [images]);
 
   const handleAddToCart = (image) => {
-    if (!globalCart.includes(image)) setGlobalCart([...globalCart, image]);
+    setGlobalCart((previousCart = []) => {
+      const currentCart = normalizeCartItems(previousCart);
+      const existingItem = currentCart.find((item) => item.path === image);
+
+      if (existingItem) {
+        return currentCart.map((item) =>
+          item.path === image ? { ...item, quantity: item.quantity + 1 } : item
+        );
+      }
+
+      return [...currentCart, { path: image, quantity: 1 }];
+    });
+  };
+
+  const handleUpdateCartItemQuantity = (image, nextQuantity) => {
+    const validQuantity = Math.max(1, Number(nextQuantity) || 1);
+
+    setGlobalCart((previousCart = []) =>
+      normalizeCartItems(previousCart).map((item) =>
+        item.path === image ? { ...item, quantity: validQuantity } : item
+      )
+    );
   };
 
   const handleRemoveFromCart = (image) => {
-    setGlobalCart(globalCart.filter((img) => img !== image));
+    setGlobalCart((previousCart = []) =>
+      normalizeCartItems(previousCart).filter((item) => item.path !== image)
+    );
   };
 
   const goNext = () => {
@@ -36,7 +90,7 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
   };
 
   const handleConfirm = () => {
-    if (globalCart.length === 0) return alert("Aucune image dans le panier !");
+    if (flattenedCart.length === 0) return alert("Aucune image dans le panier !");
     setShowEmailPrompt(true);
   };
 
@@ -50,7 +104,7 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email,
-          files: globalCart,
+          files: flattenCartItems(globalCart),
           copy_full_folders: copyFullFolders,
         }),
       });
@@ -66,7 +120,7 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
         setShowEmailPrompt(false);
         setEmail("");
         setCopyFullFolders(false);
-        window.location.reload(); // ✅ rafraîchit la page
+        window.location.reload();
       } else {
         alert("Erreur : " + data.error);
       }
@@ -80,11 +134,9 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
 
   return (
     <div className="d-flex" style={{ height: "100vh" }}>
-      {/* Section principale */}
       <div className="flex-grow-1 position-relative d-flex flex-column align-items-center justify-content-center border-end p-3">
         {selectedImage ? (
           <>
-            {/* Bouton précédent à gauche */}
             <button
               className="position-absolute"
               style={{
@@ -92,8 +144,8 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
                 top: "50%",
                 transform: "translateY(-50%)",
                 zIndex: 10,
-                border: '1px solid rgba(255, 255, 255, 0.61)',
-                background: 'rgba(156, 156, 156, 0.52)',
+                border: "1px solid rgba(255, 255, 255, 0.61)",
+                background: "rgba(156, 156, 156, 0.52)",
                 cursor: "pointer",
               }}
               onClick={goPrev}
@@ -101,7 +153,6 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
               <img src={`${process.env.PUBLIC_URL}/left.png`} alt="Précédent" style={{ width: "100px", height: "100px" }} />
             </button>
 
-            {/* Image principale au centre */}
             <img
               src={selectedImage}
               alt="Aperçu"
@@ -114,7 +165,6 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
               }}
             />
 
-            {/* Bouton suivant à droite */}
             <button
               className="position-absolute"
               style={{
@@ -122,8 +172,8 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
                 top: "50%",
                 transform: "translateY(-50%)",
                 zIndex: 10,
-                border: '1px solid rgba(255, 255, 255, 0.61)',
-                background: 'rgba(156, 156, 156, 0.52)',
+                border: "1px solid rgba(255, 255, 255, 0.61)",
+                background: "rgba(156, 156, 156, 0.52)",
                 cursor: "pointer",
               }}
               onClick={goNext}
@@ -131,12 +181,11 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
               <img src={`${process.env.PUBLIC_URL}/right.png`} alt="Suivant" style={{ width: "100px", height: "100px" }} />
             </button>
 
-            {/* Boutons d’action sous l’image */}
             <div className="mt-4 d-flex justify-content-center gap-3">
               <button
                 style={{
-                  border: '1px solid rgba(255, 255, 255, 0.61)',
-                  background: 'rgba(156, 156, 156, 0.52)',
+                  border: "1px solid rgba(255, 255, 255, 0.61)",
+                  background: "rgba(156, 156, 156, 0.52)",
                   cursor: "pointer",
                 }}
                 onClick={() => handleAddToCart(selectedImage)}
@@ -145,8 +194,8 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
               </button>
               <button
                 style={{
-                  border: '1px solid rgba(255, 255, 255, 0.61)',
-                  background: 'rgba(156, 156, 156, 0.52)',
+                  border: "1px solid rgba(255, 255, 255, 0.61)",
+                  background: "rgba(156, 156, 156, 0.52)",
                   cursor: "pointer",
                 }}
                 onClick={onBackToGallery}
@@ -160,96 +209,170 @@ function CartPage({ images, onBackToGallery, globalCart, setGlobalCart }) {
         )}
       </div>
 
-     {/* Sidebar panier */}
-     <div
-       style={{
-         width: "300px",
-         height: "calc(100vh - 30px)",
-         marginBottom: "30px",
-         padding: "1rem",
-         backgroundColor: "rgba(255, 255, 255, 0.3)",
-         borderLeft: "2px solid #000",
-         backdropFilter: "blur(5px)",
-         display: "flex",
-         flexDirection: "column",
-         overflow: "hidden",
-       }}
-     >
-       <h5>🛒 Panier ({globalCart.length})</h5>
-       <div style={{ flex: 1, overflowY: "auto", marginTop: "0.5rem", position:      "relative" }}>
-         {globalCart.length > 0 ? (
-           globalCart.map((img, idx) => (
-             <div
-               key={idx}
-               style={{
-                 position: "relative",
-                 marginBottom: "1rem",
-                 width: "80px",          // Le conteneur fait maintenant la largeur      exacte de l'image
-                 height: "80px",         // Le conteneur s'adapte à la hauteur de      l'image
-                 display: "flex",
-                 alignItems: "center",
-                 justifyContent: "flex-start", // Aligne le bloc à gauche
-               }}
-             >
-               <img
-                 src={img}
-                 alt={`panier-${idx}`}
-                 style={{
-                   width: "80px",
-                   height: "80px",
-                   objectFit: "cover",
-                   borderRadius: "8px",
-                   boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
-                   cursor: "pointer",
-                 }}
-                 onClick={() => setSelectedImage(img)}
-               />
-               <button
-                 style={{
-                   position: "absolute",
-                   top: "-5px",          // Ajusté pour chevaucher légèrement le       coin supérieur droit de la vignette
-                   right: "-5px",        // Ajusté pour se caler pile sur le bord      droit de la vignette de 80px
-                   background: "rgba(255, 0, 0, 0.9)",
-                   border: "none",
-                   borderRadius: "50%",
-                   width: "24px",         // Légèrement réduit pour mieux s'adapter      à une image de 80px
-                   height: "24px",        // Légèrement réduit
-                   display: "flex",
-                   alignItems: "center",
-                   justifyContent: "center",
-                   cursor: "pointer",
-                   fontSize: "12px",      // Diminué pour centrer correctement le ❌       dans un petit bouton
-                   padding: 0,
-                   zIndex: 5,             // S'assure que le bouton reste au-dessus
-                   boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
-                 }}
-                 onClick={() => handleRemoveFromCart(img)}
-               >
-                 ❌
-               </button>
-             </div>
-           ))
-         ) : (
-           <p style={{ textAlign: "center", color: "#666" }}>Panier vide</p>
-         )}
-       </div>
-       <button
-         style={{
-           background: "none",
-           border: "none",
-           cursor: globalCart.length === 0 ? "not-allowed" : "pointer",
-           opacity: globalCart.length === 0 ? 0.5 : 1,
-           marginTop: "1rem",
-           flexShrink: 0,
-         }}
-         onClick={handleConfirm}
-         disabled={globalCart.length === 0}
-       >
-         <img src={`${process.env.PUBLIC_URL}/confirm.png`} alt="Confirmer le      panier" style={{ width: "120px", height: "120px" }} />
-       </button>
-     </div>
+      <div
+        style={{
+          width: "300px",
+          height: "calc(100vh - 30px)",
+          marginBottom: "30px",
+          padding: "1rem",
+          backgroundColor: "rgba(255, 255, 255, 0.3)",
+          borderLeft: "2px solid #000",
+          backdropFilter: "blur(5px)",
+          display: "flex",
+          flexDirection: "column",
+          overflow: "hidden",
+        }}
+      >
+        <h5>🛒 Panier ({flattenedCart.length})</h5>
+        <div style={{ flex: 1, overflowY: "auto", marginTop: "0.5rem", position: "relative" }}>
+          {normalizedCart.length > 0 ? (
+            normalizedCart.map((item, idx) => (
+              <div
+                key={`${item.path}-${idx}`}
+                style={{
+                  marginBottom: "1rem",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "flex-start",
+                  gap: "12px",
+                  width: "100%",
+                }}
+              >
+                <img
+                  src={item.path}
+                  alt={`panier-${idx}`}
+                  style={{
+                    width: "80px",
+                    height: "80px",
+                    objectFit: "cover",
+                    borderRadius: "8px",
+                    boxShadow: "0 4px 8px rgba(0,0,0,0.3)",
+                    cursor: "pointer",
+                    flexShrink: 0,
+                  }}
+                  onClick={() => setSelectedImage(item.path)}
+                />
 
-      {/* Popup email */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    gap: "6px",
+                    marginLeft: "4px",
+                  }}
+                >
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      background: "rgba(255,255,255,0.9)",
+                      borderRadius: "999px",
+                      border: "1px solid rgba(0,0,0,0.15)",
+                      overflow: "hidden",
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateCartItemQuantity(item.path, item.quantity - 1)}
+                      style={{
+                        width: "26px",
+                        height: "28px",
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        fontWeight: "bold",
+                        color: "#222",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 0,
+                      }}
+                      aria-label={`Diminuer la quantité de ${item.path}`}
+                    >
+                      −
+                    </button>
+                    <span
+                      style={{
+                        minWidth: "24px",
+                        textAlign: "center",
+                        fontSize: "13px",
+                        fontWeight: "700",
+                        color: "#1f1f1f",
+                        lineHeight: 1,
+                      }}
+                    >
+                      {item.quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateCartItemQuantity(item.path, item.quantity + 1)}
+                      style={{
+                        width: "26px",
+                        height: "28px",
+                        border: "none",
+                        background: "transparent",
+                        cursor: "pointer",
+                        fontSize: "18px",
+                        fontWeight: "bold",
+                        color: "#222",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        padding: 0,
+                      }}
+                      aria-label={`Augmenter la quantité de ${item.path}`}
+                    >
+                      +
+                    </button>
+                  </div>
+
+                  <button
+                    style={{
+                      width: "28px",
+                      height: "28px",
+                      background: "rgba(255, 0, 0, 0.9)",
+                      border: "none",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      cursor: "pointer",
+                      fontSize: "12px",
+                      padding: 0,
+                      boxShadow: "0 2px 6px rgba(0,0,0,0.25)",
+                      color: "white",
+                    }}
+                    onClick={() => handleRemoveFromCart(item.path)}
+                    aria-label={`Retirer ${item.path}`}
+                  >
+                    ✕
+                  </button>
+                </div>
+              </div>
+            ))
+          ) : (
+            <p style={{ textAlign: "center", color: "#666" }}>Panier vide</p>
+          )}
+        </div>
+        <button
+          style={{
+            background: "none",
+            border: "none",
+            cursor: flattenedCart.length === 0 ? "not-allowed" : "pointer",
+            opacity: flattenedCart.length === 0 ? 0.5 : 1,
+            marginTop: "1rem",
+            flexShrink: 0,
+          }}
+          onClick={handleConfirm}
+          disabled={flattenedCart.length === 0}
+        >
+          <img src={`${process.env.PUBLIC_URL}/confirm.png`} alt="Confirmer le panier" style={{ width: "120px", height: "120px" }} />
+        </button>
+      </div>
+
       {showEmailPrompt && (
         <div
           style={{

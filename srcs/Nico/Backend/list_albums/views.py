@@ -16,6 +16,59 @@ from django.utils.html import strip_tags
 import requests
 
 
+def normalize_cart_items(items):
+    """Retourne la liste agrégée d'éléments de panier avec un chemin et une quantité."""
+    aggregated = {}
+
+    for item in items or []:
+        if isinstance(item, dict):
+            item_path = (
+                item.get("path")
+                or item.get("src")
+                or item.get("image")
+                or item.get("url")
+            )
+            quantity = item.get("quantity", 1)
+        else:
+            item_path = item
+            quantity = 1
+
+        if not item_path:
+            continue
+
+        try:
+            quantity = int(quantity)
+        except (TypeError, ValueError):
+            quantity = 1
+
+        if quantity < 1:
+            quantity = 1
+
+        key = str(item_path)
+        aggregated[key] = aggregated.get(key, 0) + quantity
+
+    return [{"path": path, "quantity": qty} for path, qty in aggregated.items()]
+
+
+def expand_cart_items(items):
+    expanded = []
+    for item in normalize_cart_items(items):
+        expanded.extend([item["path"]] * item["quantity"])
+    return expanded
+
+
+def get_unique_destination_path(directory, filename):
+    base_name, extension = os.path.splitext(filename)
+    candidate = os.path.join(directory, filename)
+    counter = 1
+
+    while os.path.exists(candidate):
+        candidate = os.path.join(directory, f"{base_name}_{counter}{extension}")
+        counter += 1
+
+    return candidate
+
+
 def get_all_files(base_path, relative_path="", url_base=None):
     """
     Parcours récursivement le dossier base_path et renvoie un tableau
@@ -91,26 +144,35 @@ def impress_archives(request):
 @api_view(["POST"])
 def create_client_folder(request):
     client = request.data.get("client")
-    files = request.data.get("files", [])
+    files = normalize_cart_items(request.data.get("files", []))
 
     if not client or not files:
         return JsonResponse({"error": "Nom du client ou fichiers manquants"}, status=status.HTTP_400_BAD_REQUEST)
 
     moved_files = []
 
-    for f in files:
+    for item in files:
         try:
-            relative_path = f.replace("/media/", "")
+            file_path = item["path"]
+            relative_path = file_path.replace("/media/", "")
             source_path = os.path.join(settings.MEDIA_ROOT, relative_path)
             if os.path.exists(source_path):
                 origin_folder = os.path.dirname(source_path)
                 client_folder = os.path.join(origin_folder, client)
                 os.makedirs(client_folder, exist_ok=True)
-                dest_path = os.path.join(client_folder, os.path.basename(source_path))
-                shutil.move(source_path, dest_path)  # ✅ on déplace maintenant
-                moved_files.append(dest_path)
+
+                for index in range(item["quantity"]):
+                    dest_path = get_unique_destination_path(client_folder, os.path.basename(source_path))
+                    if index == 0 and item["quantity"] == 1:
+                        shutil.move(source_path, dest_path)
+                    else:
+                        shutil.copy2(source_path, dest_path)
+                    moved_files.append(dest_path)
+
+                if item["quantity"] > 1 and os.path.exists(source_path):
+                    os.remove(source_path)
         except Exception as e:
-            print(f"❌ Erreur avec {f}: {e}")
+            print(f"❌ Erreur avec {item}: {e}")
 
     return JsonResponse({
         "message": f"Sous-dossier '{client}' créé avec {len(moved_files)} fichier(s)",
@@ -126,7 +188,7 @@ def confirm_cart(request):
     """
     data = request.data
     email = data.get("email")
-    files = data.get("files", [])
+    files = normalize_cart_items(data.get("files", []))
     copy_full_folders = bool(data.get("copy_full_folders", False))
 
     if not email or not files:
@@ -138,13 +200,15 @@ def confirm_cart(request):
     copied_files = []
     source_dirs = set()
 
-    for file_path in files:
+    for item in files:
+        file_path = item["path"]
         relative_path = file_path.replace(settings.MEDIA_URL, "").lstrip("/")
         src_path = os.path.join(settings.MEDIA_ROOT, relative_path)
         if os.path.exists(src_path):
-            dest_path = os.path.join(email_folder, os.path.basename(src_path))
-            shutil.copy2(src_path, dest_path)
-            copied_files.append(dest_path.replace(settings.MEDIA_ROOT, settings.MEDIA_URL))
+            for _ in range(item["quantity"]):
+                dest_path = get_unique_destination_path(email_folder, os.path.basename(src_path))
+                shutil.copy2(src_path, dest_path)
+                copied_files.append(dest_path.replace(settings.MEDIA_ROOT, settings.MEDIA_URL))
             source_dirs.add(os.path.dirname(src_path))
 
     wab_copied_files = []

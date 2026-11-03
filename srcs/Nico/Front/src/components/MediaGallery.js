@@ -266,7 +266,11 @@ function MediaGallery({ basePath, selectedDate, onDateChange, onFolderCreated })
             "/media",
             ""
           )}`;
-          const isInCart = cart.includes(imageUrl);
+          const isInCart = cart.some(
+            (cartItem) =>
+              (typeof cartItem === "string" && cartItem === imageUrl) ||
+              (cartItem && cartItem.path === imageUrl)
+          );
 
           return (
             <div
